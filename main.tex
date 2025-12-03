@@ -1,0 +1,136 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Main document configuration for LiGHT reports
+%
+% This template supports various report types, including:
+%   - MSc thesis
+%   - MSc semester projects
+%   - BSc thesis
+%   - BSc semester projects
+%
+% You can also customize the report metadata, authors, and supervisors.
+%
+% This template was created by LiGHTer Rizhong Lin,
+% adapted from a version by Mary-Anne Hartley,
+% which is based on PRIMEarxiv,
+% itself following the Arxiv style of George Kour
+% (available at https://github.com/kourgeorge/arxiv-style).
+%
+% Many thanks to all contributors for making this template possible!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+% Document class with options
+\documentclass[style=epfl,lab=light,reporttype=msc-thesis]{lightreport}
+% Available styles (institution formatting):
+%   - `epfl`: EPFL-specific formatting
+% Available labs:
+%   - `light`: Laboratory for Intelligent Global Health and Humanitarian Response Technologies
+%   - `mlo`: Machine Learning and Optimization Laboratory
+% Available report types:
+%   - `msc-thesis`
+%   - `msc-semester-project`
+%   - `bsc-thesis`
+%   - `bsc-semester-project`
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography configuration
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[
+    backend=biber,      % Use biber backend for modern bibliography processing
+    style=ieee,         % IEEE citation style
+    citestyle=numeric-comp, % Compressed numeric citations [1-3] instead of [1,2,3]
+    natbib=true,        % Enable natbib compatibility commands
+    % Advanced options (uncomment as needed):
+    % maxnames=999,     % Maximum number of author names to display
+    % minnames=1,       % Minimum number of author names before "et al."
+    % doi=false,        % Disable DOI display in bibliography
+    % isbn=false,       % Disable ISBN display in bibliography
+    % url=false,        % Disable URL display in bibliography
+    % date=year,        % Show only year in dates
+    giveninits=false,   % Show full author first names
+]{biblatex}
+\addbibresource{references.bib}  % Your bibliography database
+\DefineBibliographyStrings{english}{andothers = {\etal\adddot}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Report metadata
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Main title - appears on cover page and headers
+\renewcommand{\reportTitle}{Engineering a robust and scalable framework for muldimodal and text models}
+% Short title - appears in PDF bookmarks
+\renewcommand{\reportShortTitle}{Robust and Scalable framework for GenAI}
+
+% Optional metadata overrides (uncomment to customize)
+% \renewcommand{\reportType}{MSc Semester Project Report}
+\renewcommand{\reportDate}{\today}          % Full date
+\renewcommand{\reportDateShort}{\shorttoday}  % Short date format
+% \renewcommand{\reportLab}{Laboratory for Intelligent Global Health and Humanitarian Response Technologies}
+% \renewcommand{\reportLabAbbrev}{LiGHT}
+% \renewcommand{\reportInstitution}{EPFL}
+
+% Custom citation format (uncomment and modify if needed)
+% \renewcommand{\reportCitation}{Custom citation format here}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Authors and supervisors
+%
+% As a rule of thumb, junior authors (students) should be listed first, ordered by
+% their contribution or alphabetically if contributions are equal. They should be
+% followed by senior authors (supervisors), with the most senior supervisor, typically
+% the main thesis supervisor or Principal Investigator (PI) and often a professor, listed last.
+% This ordering reflects the contribution hierarchy and is standard practice in academic writing.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Add students with: \addstudent{Name}{Email}{Lab}{Institution}[ORCID]
+\addstudent{Michael Zhang}
+          {michael.zhang@epfl.ch}
+          {LiGHT}
+          {EPFL}
+
+
+\addsupervisor{Mary-Anne Hartley}
+             {mary-anne.hartley@epfl.ch}
+             {LiGHT}
+             {EPFL}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Document content
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+% Generate title page
+\makereporttitle
+\cleardoublepage
+
+% Front matter
+\input{sections/00_abstract}
+\cleardoublepage
+
+% Main content
+\input{sections/01_introduction}
+\clearpage
+\input{sections/02_methods}
+\clearpage
+\input{sections/03_results}
+\clearpage
+\input{sections/04_discussion}
+
+% A section on LaTeX basics for beginners
+\clearpage
+\input{sections/latex_basics}
+
+% Back matter
+%   - Acknowledgements
+%   - Resource availability
+%   - Ethics statements
+\clearpage
+\input{sections/backmatter}
+
+% Bibliography
+\printbibliography
+\clearpage
+
+% Appendices
+\appendix
+\input{sections/appendix}
+
+\end{document}
