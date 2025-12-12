@@ -1,91 +1,91 @@
 \section{Methods}
-\label{sec:methods}
-
-\subsection{Study design}
-
-Describe your overall approach and provide the rationale for your chosen methodology. Your description should be detailed enough that other researchers could reproduce your work.
-
-\subsection{Data}
-
-\subsubsection{Dataset characteristics}
-
-Describe your data sources, collection methods, and time period. Define all inclusion and exclusion criteria. Specify measures taken to ensure data quality. Present this information in a clear table format:
-
-\begin{table}[htbp]
-    \centering
-    \caption{Present your dataset characteristics here. Include total sample size, training/validation/test split, and relevant demographic information.}
-    \label{tab:dataset}
-    \begin{threeparttable}
-    \resizebox{0.4\textwidth}{!}{%
-    \begin{tabular}{llr}
-    \toprule
-    \textbf{Characteristic} & \textbf{Category} & \textbf{Count (\%)}\tnote{1} \\
-    \midrule
-    Sample Size & Total & 1000 (100.0\%)\\
-               & Training & 700 (70.0\%) \\
-               & Validation & 150 (15.0\%) \\
-               & Test & 150 (15.0\%) \\
-    \midrule
-    Gender & Male & 520 (52.0\%) \\
-           & Female & 460 (46.0\%) \\
-           & Other & 20 (2.0\%) \\
-    \midrule
-    Age Group\tnote{2} & 18-24 & 200 (20.0\%) \\
-             & 25-34 & 350 (35.0\%) \\
-             & 35-44 & 250 (25.0\%) \\
-             & 45-54 & 150 (15.0\%) \\
-             & 55+ & 50 (5.0\%) \\
-    \midrule
-    Education\tnote{3} & High School & 300 (30.0\%) \\
-             & Bachelor's & 450 (45.0\%) \\
-             & Master's & 200 (20.0\%) \\
-             & Ph.D. & 50 (5.0\%) \\
-    \bottomrule
-    \end{tabular}%
-    }
-    \begin{tablenotes}
-      \small
-      \item[1] All percentages are rounded to one decimal place
-      \item[2] Age groups are presented in years
-      \item[3] Education represents the highest level completed
-    \end{tablenotes}
-    \end{threeparttable}
-\end{table}
-
-\subsection{Methodology}
-
-\subsubsection{Preprocessing pipeline}
-
-Document each step of your preprocessing pipeline in sequence. Explain the rationale behind each decision made during preprocessing. Include any parameters or thresholds used.
-
-\subsubsection{Model architecture}
-
-Present your model's complete architecture. Include a detailed diagram showing all components and their connections. Your diagram should look similar to this:
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{example-image}
-    \caption{Create a detailed diagram of your model architecture. Label all components,
-             connections, and data flows. Include input and output dimensions.}
-    \label{fig:modelarch}
-\end{figure}
-
-\subsection{Implementation details}
-
-\subsubsection{Software and hardware}
-
-List all software tools, libraries, and versions used. Specify the computing resources required to reproduce your work. Include any special hardware requirements.
-
-\subsubsection{Hyperparameters}
-
-Document all hyperparameters used in your model. Explain how you selected these values. Describe any optimization or tuning processes used.
-
-\subsection{Evaluation methodology}
-
-\subsubsection{Metrics}
-
-Define each evaluation metric used in your study. Explain why these metrics are appropriate for your research questions. Include formulas where necessary.
-
-\subsubsection{Statistical analysis}
-
-Describe all statistical tests performed. Include power calculations where applicable. Specify significance levels and confidence intervals used.
+% \label{sec:methods}
+%
+% \subsection{Study design}
+%
+% Describe your overall approach and provide the rationale for your chosen methodology. Your description should be detailed enough that other researchers could reproduce your work.
+%
+% \subsection{Data}
+%
+% \subsubsection{Dataset characteristics}
+%
+% Describe your data sources, collection methods, and time period. Define all inclusion and exclusion criteria. Specify measures taken to ensure data quality. Present this information in a clear table format:
+%
+% \begin{table}[htbp]
+%     \centering
+%     \caption{Present your dataset characteristics here. Include total sample size, training/validation/test split, and relevant demographic information.}
+%     \label{tab:dataset}
+%     \begin{threeparttable}
+%     \resizebox{0.4\textwidth}{!}{%
+%     \begin{tabular}{llr}
+%     \toprule
+%     \textbf{Characteristic} & \textbf{Category} & \textbf{Count (\%)}\tnote{1} \\
+%     \midrule
+%     Sample Size & Total & 1000 (100.0\%)\\
+%                & Training & 700 (70.0\%) \\
+%                & Validation & 150 (15.0\%) \\
+%                & Test & 150 (15.0\%) \\
+%     \midrule
+%     Gender & Male & 520 (52.0\%) \\
+%            & Female & 460 (46.0\%) \\
+%            & Other & 20 (2.0\%) \\
+%     \midrule
+%     Age Group\tnote{2} & 18-24 & 200 (20.0\%) \\
+%              & 25-34 & 350 (35.0\%) \\
+%              & 35-44 & 250 (25.0\%) \\
+%              & 45-54 & 150 (15.0\%) \\
+%              & 55+ & 50 (5.0\%) \\
+%     \midrule
+%     Education\tnote{3} & High School & 300 (30.0\%) \\
+%              & Bachelor's & 450 (45.0\%) \\
+%              & Master's & 200 (20.0\%) \\
+%              & Ph.D. & 50 (5.0\%) \\
+%     \bottomrule
+%     \end{tabular}%
+%     }
+%     \begin{tablenotes}
+%       \small
+%       \item[1] All percentages are rounded to one decimal place
+%       \item[2] Age groups are presented in years
+%       \item[3] Education represents the highest level completed
+%     \end{tablenotes}
+%     \end{threeparttable}
+% \end{table}
+%
+% \subsection{Methodology}
+%
+% \subsubsection{Preprocessing pipeline}
+%
+% Document each step of your preprocessing pipeline in sequence. Explain the rationale behind each decision made during preprocessing. Include any parameters or thresholds used.
+%
+% \subsubsection{Model architecture}
+%
+% Present your model's complete architecture. Include a detailed diagram showing all components and their connections. Your diagram should look similar to this:
+%
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{example-image}
+%     \caption{Create a detailed diagram of your model architecture. Label all components,
+%              connections, and data flows. Include input and output dimensions.}
+%     \label{fig:modelarch}
+% \end{figure}
+%
+% \subsection{Implementation details}
+%
+% \subsubsection{Software and hardware}
+%
+% List all software tools, libraries, and versions used. Specify the computing resources required to reproduce your work. Include any special hardware requirements.
+%
+% \subsubsection{Hyperparameters}
+%
+% Document all hyperparameters used in your model. Explain how you selected these values. Describe any optimization or tuning processes used.
+%
+% \subsection{Evaluation methodology}
+%
+% \subsubsection{Metrics}
+%
+% Define each evaluation metric used in your study. Explain why these metrics are appropriate for your research questions. Include formulas where necessary.
+%
+% \subsubsection{Statistical analysis}
+%
+% Describe all statistical tests performed. Include power calculations where applicable. Specify significance levels and confidence intervals used.
