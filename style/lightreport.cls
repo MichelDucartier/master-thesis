@@ -319,7 +319,7 @@
     \vbox{%
         \hsize\textwidth
         \linewidth\hsize
-        
+
         % Institution logo
         \if\@titlelogoinst\empty\else
             \begin{center}
@@ -327,7 +327,7 @@
                 \vspace*{1cm}
             \end{center}
         \fi
-        
+
         % Title section
         \vspace*{\titleabovespace}
         \@toptitlebar
@@ -336,13 +336,13 @@
         \end{center}
         \@bottomtitlebar
         \vspace*{\titlebelowspace}
-        
+
         % Report type
         \begin{center}
             {\large\itshape\reportType\par}
         \end{center}
         \vspace*{\authorabovespace}
-        
+
         % Author block
         \begin{center}
             \def\And{%
@@ -359,14 +359,14 @@
                 \bfseries\rule{\z@}{24pt}\@author
             \end{tabular}%
         \end{center}
-        
+
         % Date and lab logo
         \vspace*{\authorbelowspace}
         \begin{center}
             \reportDate
         \end{center}
         \vspace*{\datebelowspace}
-        
+
         \if\@titlelogolab\empty\else
             \begin{center}
                 \vfill
@@ -379,13 +379,13 @@
 
 % Citation definition with both students and supervisors
 \def\reportCitation{%
-    \textbf{\@studentnames}; 
+    \textbf{\@studentnames};
     \ifnum\@supervisorcount=1
         \textbf{\@supervisornames}\ (Supervisor)%
     \else
         \textbf{\@supervisornames}\ (Supervisors)%
-    \fi.\ 
-    \textit{\reportTitle}.\ \reportDateShort.\ 
+    \fi.\
+    \textit{\reportTitle}.\ \reportDateShort.\
     \reportType.\ \reportLab\ (\reportLabAbbrev), \reportInstitution.%
 }
 
@@ -468,13 +468,13 @@
             \addcontentsline{toc}{section}{Graphical Abstract}
             {\Large \bfseries \scshape Graphical Abstract}
             \vspace{1em}
-            
+
             \if@landscape
                 \includegraphics[width=\@graphabswidth,angle=270]{\@graphicalabstractimage}
             \else
                 \includegraphics[width=\@graphabswidth]{\@graphicalabstractimage}
             \fi
-            
+
             \if\@graphabscaption\empty\else
                 \captionsetup{type=figure}
                 \captionsetup{style=base}
