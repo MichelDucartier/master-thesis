@@ -13,12 +13,6 @@ LICENSE: [GNU Affero General Public License 3.0](https://github.com/nrc-cnrc/COV
 Link: https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg
 LICENSE: [GPL 2](http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
-## DDTI
-
-MIGHT BE ILLEGAL
-Link: https://www.kaggle.com/datasets/dasmehdixtr/ddti-thyroid-ultrasound-images
-LICENSE: 
-
 ## IU Xray
 
 Link: https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university
