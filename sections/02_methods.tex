@@ -1,7 +1,71 @@
 \section{Methods}
 \label{sec:methods}
 
-\subsection{Building a reproducible framework}
+\subsection{Model architecture}
+
+% Figure of the architecture
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/multimeditron_architecture.png}
+    \caption{\textbf{Overview of the MultiMeditron architecture.} MultiMeditron follows a Llava-like architecture where images are first processed by a modality embedder before being fused with text embeddings and passed to a large language model (LLM) for text generation. MultiMeditron allows researchers to easily plug-and-play different modality embedders and LLM architectures. In this example, we illustrate two types of modality embedders: (1) a single-expert embedder that uses the same image encoder for all image modalities, and (2) a modality-driven embedder that selects a specific image encoder based on the input image modality.}
+    \label{fig:architecture}
+\end{figure}
+
+
+Clinical decision-making involves lots of modalities ranging from images (X-Rays, MRI, ...) to signals (Lung Ultrasound, ECG, ...) and 3D scans (Ultrasound, CT, ...).
+Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the backbone needs to get the best performance out of existing pretrained models.
+
+To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
+
+\vspace{0.2cm}
+
+MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then fused with text input embeddings and passed to the LLM for text generation. This intermediate fusion approach allows for modularity, as different modality embedders and LLM architectures can be easily integrated into the framework.
+
+To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron.
+\paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original Llava architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
+\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to leverage the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks.
+
+\subsubsection{Modality-driven embedders}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/multimeditron_fusion.png}
+    \caption{\textbf{Expert fusion strategies for the modality-driven embedder.} We explore four strategies for combining the embeddings from different modality experts, including AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED. Experts are frozen during training, and only the projections and attentions are learned for the modality-driven embedder.}
+    \label{fig:expert_fusion}
+\end{figure}
+
+The modality-driven embedder is composed of a set of image experts specialized in different medical image modalities. \ref{fig:architecture} shows an example with four specialized experts and a generalist one.
+
+Each expert outputs an embedding of the image, and those embeddings need to be combined before being passed to the LLM. We explore four strategies for combining the embeddings illustrated in \ref{fig:expert_fusion}:
+
+\begin{itemize}
+    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. The projected embeddings are then averaged to obtain the final embedding.
+    \item \textbf{AVG-SHARED} (Average and Shared-Projection): A single shared projection layer is used for all experts. The embeddings from each expert are averaged first, and then the averaged embedding is projected into the LLM token space.
+    \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert.
+    \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
+\end{itemize}
+
+\paragraph{Averaging}
+In the averaging-based fusion, the embeddings from each expert are projected into the LLM token space using either per-expert or shared projection layers. The final embedding is obtained by averaging the projected embeddings:
+\begin{equation}
+    \text{AvgFusion}\left(E_1, E_2, \ldots, E_k\right) = \frac{1}{k} \sum_{i=1}^{k} P_i\left(E_i\right)
+\end{equation}
+where $E_i$ is the embedding from expert $i$, $P_i$ is the projection layer for expert $i$ (or shared projection layer for AVG-SHARED), and $k$ is the number of experts.
+
+\paragraph{Attention-mechanism} Formally, the attention-based fusion can be described as follows:
+\begin{equation}
+    \text{Attention}\left(Q, K, V\right) = \text{softmax}\left(\frac{QK^T}{\sqrt{d}}\right)V
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $Q$ (queries) are the (projected) embeddings of the generalist expert of dimension $m \times d$ where $m$ is the number of embeddings from the Generalist Expert, $d_k$ is the dimension of those embeddings.
+    \item $K$ (keys) are the (projected) embeddings of the specialist experts of dimension $n \times d$ where $n$ is the number of embeddings from all the Specialist Experts.
+    \item $V$ (values) are also the (projected) embeddings of the specialist experts of dimension $n \times d$.
+\end{itemize}
+
+\subsection{Building a reproducible and modular framework}
 
 Following the recommendations in \cite{pineau2020improvingreproducibilitymachinelearning}, we have taken several steps to ensure the reproducibility of our framework:
 \begin{itemize}
@@ -12,7 +76,6 @@ Following the recommendations in \cite{pineau2020improvingreproducibilitymachine
 \end{itemize}
 
 \section{Data}
-
 
 
 

@@ -3,8 +3,6 @@
 
 \subsection{Problem overview and research gap}
 
-% Begin with a clear statement of the broader context and significance of your research area. Present recent statistics and evidence demonstrating the problem's impact. Follow this with current approaches to solving the problem, their limitations, and the specific gaps in existing solutions that your work addresses. Build a clear narrative that leads to why your research is necessary.
-
 The field of Artificial Intelligence (AI) has witnessed transformative advancements in healthcare. Clinical decision-making stands out as a domain where multimodal data integration combining medical imaging, electronic health records (EHRs), and other sources has the potential to significantly improve patient outcomes.
 
 Despite these advancements, the broader adoption of multimodal AI in clinical applications is hindered by several challenges.
@@ -22,12 +20,15 @@ In this context, we introduce \textbf{MultiMeditron}. MultiMeditron is a multimo
 
 \subsection{Literature review}
 
-% Structure your literature review chronologically or thematically, depending on your field. Start with foundational work that established key concepts. Progress to recent developments and state-of-the-art approaches. Critically analyze existing methods, comparing their strengths and limitations. Focus particularly on works that directly relate to your research question.
+When designing multimodal models, different fusion strategies can be employed to combine information from various modalities. In late fusion, each modality is processed separately by its own encoder and combined only at the end such as CLIP models \cite{radford2021learningtransferablevisualmodels}. While those models are able to produce image embeddings that are aligned with text, they can not generate text or follow instructions, limiting their usability.
 
-% The roots of multimodal models can be traced back to early attempts to combine textual and visual data for various tasks such as classification and retrieval. Over time, these models evolved to integrate more diverse modalities like audio, video, and sensor data, driven by the realization that real-world understanding often requires synthesizing information from multiple sources.
+To create generative models, early fusion involves integrating raw data from different modalities at the input level, allowing the model to learn joint representations from the outset \cite{chameleonteam2025chameleonmixedmodalearlyfusionfoundation} \cite{meta2025llama4}. While those models display impressive capabilities at multi-step reasoning and instruction following tasks, they require a large pretraining set to truly perform. Moreover, they lack modularity in the sense that one can not easily extend an existing model by adding a new modality as this requires a new pretraining.
 
-Recent advances in large multimodal models (LMMs) have demonstrated impressive abilities in pattern recognition, coherent text generation, and visual information processing \cite{openai2025gpt5} \cite{google2025gemini3}. However, their closed nature limits their use in healthcare, as sensitive data must be sent to these models.
+To combine both the embedding power of CLIP and the generative ability of LLMs, a novel intermediate fusion approach has been proposed \cite{liu2023visualinstructiontuning}. This architecture uses a CLIP model to project images into the LLM token embedding space, fuses those projected embeddings with text input embeddings, and uses the LLM to generate text. This allows for modularity and removes the need for a large pretraining set as it exploits the native capabilities of the CLIP and the LLM model.
 
+Many multimodal generative models have been created using both early and intermediate fusion approach. Nevertheless, there is no consensus on which architecture is best suited for multimodal tasks, as each has its own strengths and weaknesses. Recent advances in large multimodal models (LMMs) have demonstrated impressive abilities in pattern recognition, coherent text generation, and visual information processing \cite{openai2025gpt5} \cite{google2025gemini3}. However, their closed nature limits their use in healthcare, as sensitive data must be sent to these models.
+
+% Talk about early vs intermediate vs late fusion
 Open-weights multimodal models are closing the gap with closed models, with models like Llava-Next \cite{liu2024llavanext}, Ministral \cite{mistral2025mistral3} and Qwen3-VL \cite{bai2025qwen3vltechnicalreport}. However, despite their strong general image-understanding capabilities, general-purpose (non–medically specialized) multimodal models still fall short in the nuanced medical reasoning and robust clinical interpretation required for medical data.
 
 Recognizing those gaps, the research community has developed specialized multimodal models for medical applications. Models such as Med-Flamingo \cite{moor2023medflamingomultimodalmedicalfewshot} and LLaVA-Med \cite{li2023llavamedtraininglargelanguageandvision} have been designed to handle medical images and text, demonstrating improved performance on clinical tasks compared to their general-purpose counterparts. More recently, MedGemma \cite{sellergren2025medgemmatechnicalreport} has pushed the boundaries further by showing strong results on various medical benchmarks, highlighting the potential of multimodal approaches in healthcare.
