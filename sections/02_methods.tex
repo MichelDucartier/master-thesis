@@ -92,7 +92,114 @@ Following the recommendations in \cite{pineau2020improvingreproducibilitymachine
 
 Furthermore, we ensure that the training pipeline is scalable. This scalability is achieved through the use of distributed training techniques using Deepspeed \cite{rajbhandari2020zeromemoryoptimizationstraining}.
 
+
 \section{Data}
+
+Our dataset is composed of multiple publicly available datasets covering various medical imaging modalities. Below, we provide a summary of the dataset characteristics in Table \ref{tab:dataset}. \footnote{The complete dataset mixture is available at \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}.}
+
+\begin{table*}[htbp]
+    \centering
+    \caption{Summary of the MultiMediset data mixture }
+    \label{tab:dataset}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        \textbf{Dataset} & \textbf{Source} & \textbf{License} & \textbf{Samples} & \textbf{Domain} & \textbf{Type} \\
+        \hline
+        BUSI &
+        \href{https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset}{Kaggle} &
+        CC0 &
+        773 &
+        Medical &
+        Captioning \\
+        \hline
+        COVID-US &
+        \href{https://github.com/nrc-cnrc/COVID-US}{GitHub} &
+        AGPL-3.0 &
+        30{,}101 &
+        Medical &
+        Captioning \\
+        \hline
+        CT2US &
+        \href{https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg}{Kaggle} &
+        GPL-2.0 &
+        6{,}461 &
+        Medical &
+        Captioning \\
+        \hline
+        IU Xray &
+        \href{https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university}{Kaggle} &
+        CC BY-NC-ND 4.0 &
+        2{,}964 &
+        Medical &
+        Captioning \\
+        \hline
+        LLaVA Pretrain &
+        \href{https://huggingface.co/datasets/liuhaotian/LLaVA-CC3M-Pretrain-595K}{Hugging Face} &
+        CC-3M, BLIP &
+        558{,}128 &
+        Generalist &
+        Captioning \\
+        \hline
+        LLaVA Instruct &
+        \href{https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data}{Hugging Face} &
+        Apache 2.0 &
+        624{,}252 &
+        Generalist &
+        Question answering \\
+        \hline
+        MAmmoTH &
+        \href{https://huggingface.co/datasets/MAmmoTH-VL/MAmmoTH-VL-Instruct-12M}{Hugging Face} &
+        Apache 2.0 &
+        1{,}639{,}212 &
+        Generalist &
+        Mixed \\
+        \hline
+        MedTrinity &
+        \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face} &
+        Multiple (see data card) &
+        10{,}065{,}045 &
+        Medical &
+        Captioning \\
+        \hline
+        Pixmo Cap &
+        \href{https://huggingface.co/datasets/allenai/pixmo-cap}{Hugging Face} &
+        ODC-BY-1.0 (AI2 RUG) &
+        603{,}029 &
+        Generalist &
+        Captioning \\
+        \hline
+        Pixmo Ask Anything &
+        \href{https://huggingface.co/datasets/allenai/pixmo-ask-model-anything}{Hugging Face} &
+        ODC-BY-1.0 (AI2 RUG) &
+        101{,}454 &
+        Generalist &
+        Question answering \\
+        \hline
+        PMC-VQA &
+        \href{https://huggingface.co/datasets/RadGenome/PMC-VQA}{Hugging Face} &
+        CC BY-SA &
+        176{,}948 &
+        Medical &
+        Question answering \\
+        \hline
+    \end{tabular}
+\end{table*}
+
+
+% The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical samples (74\%) and 3,526,075 general-domain samples (26\%).
+
+Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
+
+\subsection{Data processing}
+
+To enhance the quality of the training data, we applied several processing steps involving distillation with GPT-5 and reformatting using open-weights models on the following data sources:
+
+\paragraph{PMC-VQA} To provide rationales for the answers in the PMC-VQA dataset \cite{zhang2023pmcvqa}, we employed GPT-5 to generate detailed explanations. For each image-question pair, GPT-5 was prompted to produce a comprehensive rationale justifying the provided answer. To ensure the clinical correctness and overall quality of the generated rationales, medical doctors were involved in the process by reviewing sampled outputs. Based on their feedback, we iteratively refined and tuned the prompting strategy until the generated rationales met the desired standards. This human-in-the-loop process enriched the dataset by adding reliable context and depth to the responses, facilitating better learning for the model.
+
+\paragraph{MedTrinity} The original MedTrinity dataset \cite{xie2024medtrinity25mlargescalemultimodaldataset} contains image-caption pairs with captions that often lack structure and clarity. To improve the quality of these captions, we use an open-weight LLM, Qwen-3 \cite{yang2025qwen3technicalreport} to reformat them into a more structured conversational format.
+
+BUSI, COVID-US, CT2US and IU Xray were enhanced in a previous work following a similar approach. %TODO: cite Fabrice
 
 
 
