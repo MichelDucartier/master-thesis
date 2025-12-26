@@ -45,35 +45,52 @@ Each expert outputs an embedding of the image, and those embeddings need to be c
     \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
 \end{itemize}
 
-\paragraph{Averaging}
-In the averaging-based fusion, the embeddings from each expert are projected into the LLM token space using either per-expert or shared projection layers. The final embedding is obtained by averaging the projected embeddings:
-\begin{equation}
-    \text{AvgFusion}\left(E_1, E_2, \ldots, E_k\right) = \frac{1}{k} \sum_{i=1}^{k} P_i\left(E_i\right)
-\end{equation}
-where $E_i$ is the embedding from expert $i$, $P_i$ is the projection layer for expert $i$ (or shared projection layer for AVG-SHARED), and $k$ is the number of experts.
+Formally, our attention implementation follows the multi-head attention mechanism from \cite{vaswani2023attentionneed}:
 
-\paragraph{Attention-mechanism} Formally, the attention-based fusion can be described as follows:
-\begin{equation}
-    \text{Attention}\left(Q, K, V\right) = \text{softmax}\left(\frac{QK^T}{\sqrt{d}}\right)V
-\end{equation}
+\begin{equation*}
+    \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O
+\end{equation*}
 
-where:
+where each head is computed as:
 
+\begin{equation*}
+    \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+\end{equation*}
+
+Then, we can write formally the equations for the different fusion strategies as follows:
 \begin{itemize}
-    \item $Q$ (queries) are the (projected) embeddings of the generalist expert of dimension $m \times d$ where $m$ is the number of embeddings from the Generalist Expert, $d_k$ is the dimension of those embeddings.
-    \item $K$ (keys) are the (projected) embeddings of the specialist experts of dimension $n \times d$ where $n$ is the number of embeddings from all the Specialist Experts.
-    \item $V$ (values) are also the (projected) embeddings of the specialist experts of dimension $n \times d$.
+    \item \textbf{AVG-PEP}:
+        \begin{equation}
+            E_{final} = \frac{1}{N} \sum_{i=1}^{N} \text{Proj}_i(E_i)
+        \end{equation}
+    \item \textbf{AVG-SHARED}:
+        \begin{equation}
+            E_{final} = \text{Proj}\left(\frac{1}{N} \sum_{i=1}^{N} E_i\right)
+        \end{equation}
+    \item \textbf{ATTN-PEP}:
+        \begin{equation}
+            E_{final} = \text{MultiHead}\left(\text{Proj}_{gen}(E_{gen}), \{ \text{Proj}_i(E_i) \}_{i=1}^{N}, \{ \text{Proj}_i(E_i) \}_{i=1}^{N}\right)
+        \end{equation}
+    \item \textbf{ATTN-SHARED}:
+        \begin{equation}
+            E_{final} = \text{Proj}\left(\text{MultiHead}\left(E_{gen}, \{ E_i \}_{i=1}^{N}, \{ E_i \}_{i=1}^{N}\right)\right)
+        \end{equation}
 \end{itemize}
+where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
 
-\subsection{Building a reproducible and modular framework}
+\subsection{Building a scalable, modular, reproducible framework}
 
 Following the recommendations in \cite{pineau2020improvingreproducibilitymachinelearning}, we have taken several steps to ensure the reproducibility of our framework:
+
 \begin{itemize}
     \item \textbf{Open-source code}: We have made the complete source code of MultiMeditron available on GitHub at \url{github.com/EPFLiGHT/MultiMeditron}
     \item \textbf{Documentation}: Comprehensive documentation is provided, including setup instructions, usage guidelines, and examples to help users replicate our experiments. This documentation is accessible at \url{epflight.github.io/MultiMeditron/}
+    \item \textbf{Modularity}: The framework is designed to be modular, allowing researchers to easily swap out different components (e.g., modality embedders, LLM architectures) without affecting the overall functionality. This modularity facilitates experimentation and adaptation to different research needs. The whole framework is compatible with the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural}, making it easy to integrate with a wide range of pretrained models and tools.
     \item \textbf{Docker images}: We provide Docker images that encapsulate the entire software environment, ensuring that users can run the framework without dependency issues. The Docker images support both ARM and x86 architectures.
-    \item \textbf{Dataset access}: The datasets used in our experiments are publicly available. We provide links and instructions for accessing these datasets in the documentation. TODO! Provide licenses
+    \item \textbf{Dataset access}: The datasets used in our experiments are publicly available. We provide links and instructions for accessing these datasets in the documentation.
 \end{itemize}
+
+Furthermore, we ensure that the training pipeline is scalable. This scalability is achieved through the use of distributed training techniques using Deepspeed \cite{rajbhandari2020zeromemoryoptimizationstraining}.
 
 \section{Data}
 
