@@ -1,208 +1,3 @@
-\section{Methods}
-\label{sec:methods}
-
-\subsection{Model architecture}
-
-% Figure of the architecture
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/multimeditron_architecture.png}
-    \caption{\textbf{Overview of the MultiMeditron architecture.} MultiMeditron follows a Llava-like architecture where images are first processed by a modality embedder before being fused with text embeddings and passed to a large language model (LLM) for text generation. MultiMeditron allows researchers to easily plug-and-play different modality embedders and LLM architectures. In this example, we illustrate two types of modality embedders: (1) a single-expert embedder that uses the same image encoder for all image modalities, and (2) a modality-driven embedder that selects a specific image encoder based on the input image modality.}
-    \label{fig:architecture}
-\end{figure}
-
-
-Clinical decision-making involves lots of modalities ranging from images (X-Rays, MRI, ...) to signals (Lung Ultrasound, ECG, ...) and 3D scans (Ultrasound, CT, ...).
-Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the backbone needs to get the best performance out of existing pretrained models.
-
-To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
-
-\vspace{0.2cm}
-
-MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then fused with text input embeddings and passed to the LLM for text generation. This intermediate fusion approach allows for modularity, as different modality embedders and LLM architectures can be easily integrated into the framework.
-
-To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron.
-\paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original Llava architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
-\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to leverage the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks.
-
-\subsubsection{Modality-driven embedders}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/multimeditron_fusion.png}
-    \caption{\textbf{Expert fusion strategies for the modality-driven embedder.} We explore four strategies for combining the embeddings from different modality experts, including AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED. Experts are frozen during training, and only the projections and attentions are learned for the modality-driven embedder.}
-    \label{fig:expert_fusion}
-\end{figure}
-
-The modality-driven embedder is composed of a set of image experts specialized in different medical image modalities. \ref{fig:architecture} shows an example with four specialized experts and a generalist one.
-
-Each expert outputs an embedding of the image, and those embeddings need to be combined before being passed to the LLM. We explore four strategies for combining the embeddings illustrated in \ref{fig:expert_fusion}:
-
-\begin{itemize}
-    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. The projected embeddings are then averaged to obtain the final embedding.
-    \item \textbf{AVG-SHARED} (Average and Shared-Projection): A single shared projection layer is used for all experts. The embeddings from each expert are averaged first, and then the averaged embedding is projected into the LLM token space.
-    \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert.
-    \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
-\end{itemize}
-
-Formally, our attention implementation follows the multi-head attention mechanism from \cite{vaswani2023attentionneed}:
-
-\begin{equation*}
-    \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O
-\end{equation*}
-
-where each head is computed as:
-
-\begin{equation*}
-    \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
-\end{equation*}
-
-Then, we can write formally the equations for the different fusion strategies as follows:
-\begin{itemize}
-    \item \textbf{AVG-PEP}:
-        \begin{equation}
-            E_{final} = \frac{1}{N} \sum_{i=1}^{N} \text{Proj}_i(E_i)
-        \end{equation}
-    \item \textbf{AVG-SHARED}:
-        \begin{equation}
-            E_{final} = \text{Proj}\left(\frac{1}{N} \sum_{i=1}^{N} E_i\right)
-        \end{equation}
-    \item \textbf{ATTN-PEP}:
-        \begin{equation}
-            E_{final} = \text{MultiHead}\left(\text{Proj}_{gen}(E_{gen}), \{ \text{Proj}_i(E_i) \}_{i=1}^{N}, \{ \text{Proj}_i(E_i) \}_{i=1}^{N}\right)
-        \end{equation}
-    \item \textbf{ATTN-SHARED}:
-        \begin{equation}
-            E_{final} = \text{Proj}\left(\text{MultiHead}\left(E_{gen}, \{ E_i \}_{i=1}^{N}, \{ E_i \}_{i=1}^{N}\right)\right)
-        \end{equation}
-\end{itemize}
-where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
-
-\subsection{Building a scalable, modular, reproducible framework}
-
-Following the recommendations in \cite{pineau2020improvingreproducibilitymachinelearning}, we have taken several steps to ensure the reproducibility of our framework:
-
-\begin{itemize}
-    \item \textbf{Open-source code}: We have made the complete source code of MultiMeditron available on GitHub at \url{github.com/EPFLiGHT/MultiMeditron}
-    \item \textbf{Documentation}: Comprehensive documentation is provided, including setup instructions, usage guidelines, and examples to help users replicate our experiments. This documentation is accessible at \url{epflight.github.io/MultiMeditron/}
-    \item \textbf{Modularity}: The framework is designed to be modular, allowing researchers to easily swap out different components (e.g., modality embedders, LLM architectures) without affecting the overall functionality. This modularity facilitates experimentation and adaptation to different research needs. The whole framework is compatible with the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural}, making it easy to integrate with a wide range of pretrained models and tools.
-    \item \textbf{Docker images}: We provide Docker images that encapsulate the entire software environment, ensuring that users can run the framework without dependency issues. The Docker images support both ARM and x86 architectures.
-    \item \textbf{Dataset access}: The datasets used in our experiments are publicly available. We provide links and instructions for accessing these datasets in the documentation.
-\end{itemize}
-
-Furthermore, we ensure that the training pipeline is scalable. This scalability is achieved through the use of distributed training techniques using Deepspeed \cite{rajbhandari2020zeromemoryoptimizationstraining}.
-
-
-\section{Data}
-
-Our dataset is composed of multiple publicly available datasets covering various medical imaging modalities. Below, we provide a summary of the dataset characteristics in Table \ref{tab:dataset}. \footnote{The complete dataset mixture is available at \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}.}
-
-\begin{table*}[htbp]
-    \centering
-    \caption{Summary of the MultiMediset data mixture }
-    \label{tab:dataset}
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{|c|c|c|c|c|c|}
-        \hline
-        \textbf{Dataset} & \textbf{Source} & \textbf{License} & \textbf{Samples} & \textbf{Domain} & \textbf{Type} \\
-        \hline
-        BUSI &
-        \href{https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset}{Kaggle} &
-        CC0 &
-        773 &
-        Medical &
-        Captioning \\
-        \hline
-        COVID-US &
-        \href{https://github.com/nrc-cnrc/COVID-US}{GitHub} &
-        AGPL-3.0 &
-        30{,}101 &
-        Medical &
-        Captioning \\
-        \hline
-        CT2US &
-        \href{https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg}{Kaggle} &
-        GPL-2.0 &
-        6{,}461 &
-        Medical &
-        Captioning \\
-        \hline
-        IU Xray &
-        \href{https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university}{Kaggle} &
-        CC BY-NC-ND 4.0 &
-        2{,}964 &
-        Medical &
-        Captioning \\
-        \hline
-        LLaVA Pretrain &
-        \href{https://huggingface.co/datasets/liuhaotian/LLaVA-CC3M-Pretrain-595K}{Hugging Face} &
-        CC-3M, BLIP &
-        558{,}128 &
-        Generalist &
-        Captioning \\
-        \hline
-        LLaVA Instruct &
-        \href{https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data}{Hugging Face} &
-        Apache 2.0 &
-        624{,}252 &
-        Generalist &
-        Question answering \\
-        \hline
-        MAmmoTH &
-        \href{https://huggingface.co/datasets/MAmmoTH-VL/MAmmoTH-VL-Instruct-12M}{Hugging Face} &
-        Apache 2.0 &
-        1{,}639{,}212 &
-        Generalist &
-        Mixed \\
-        \hline
-        MedTrinity &
-        \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face} &
-        Multiple (see data card) &
-        10{,}065{,}045 &
-        Medical &
-        Captioning \\
-        \hline
-        Pixmo Cap &
-        \href{https://huggingface.co/datasets/allenai/pixmo-cap}{Hugging Face} &
-        ODC-BY-1.0 (AI2 RUG) &
-        603{,}029 &
-        Generalist &
-        Captioning \\
-        \hline
-        Pixmo Ask Anything &
-        \href{https://huggingface.co/datasets/allenai/pixmo-ask-model-anything}{Hugging Face} &
-        ODC-BY-1.0 (AI2 RUG) &
-        101{,}454 &
-        Generalist &
-        Question answering \\
-        \hline
-        PMC-VQA &
-        \href{https://huggingface.co/datasets/RadGenome/PMC-VQA}{Hugging Face} &
-        CC BY-SA &
-        176{,}948 &
-        Medical &
-        Question answering \\
-        \hline
-    \end{tabular}
-\end{table*}
-
-
-% The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical samples (74\%) and 3,526,075 general-domain samples (26\%).
-
-Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
-
-\subsection{Data processing}
-
-To enhance the quality of the training data, we applied several processing steps involving distillation with GPT-5 and reformatting using open-weights models on the following data sources:
-
-\paragraph{PMC-VQA} To provide rationales for the answers in the PMC-VQA dataset \cite{zhang2023pmcvqa}, we employed GPT-5 to generate detailed explanations. For each image-question pair, GPT-5 was prompted to produce a comprehensive rationale justifying the provided answer. To ensure the clinical correctness and overall quality of the generated rationales, medical doctors were involved in the process by reviewing sampled outputs. Based on their feedback, we iteratively refined and tuned the prompting strategy until the generated rationales met the desired standards. This human-in-the-loop process enriched the dataset by adding reliable context and depth to the responses, facilitating better learning for the model.
-
-\paragraph{MedTrinity} The original MedTrinity dataset \cite{xie2024medtrinity25mlargescalemultimodaldataset} contains image-caption pairs with captions that often lack structure and clarity. To improve the quality of these captions, we use an open-weight LLM, Qwen-3 \cite{yang2025qwen3technicalreport} to reformat them into a more structured conversational format.
-
-BUSI, COVID-US, CT2US and IU Xray were enhanced in a previous work following a similar approach. %TODO: cite Fabrice
-
-
-
 % \label{sec:methods}
 %
 % \subsection{Study design}
@@ -293,3 +88,273 @@ BUSI, COVID-US, CT2US and IU Xray were enhanced in a previous work following a s
 % \subsubsection{Statistical analysis}
 %
 % Describe all statistical tests performed. Include power calculations where applicable. Specify significance levels and confidence intervals used.
+
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Model architecture}
+
+% Figure of the architecture
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/multimeditron_architecture.png}
+    \caption{\textbf{Overview of the MultiMeditron architecture.} MultiMeditron follows a Llava-like architecture where images are first processed by a modality embedder before being fused with text embeddings and passed to a large language model (LLM) for text generation. MultiMeditron allows researchers to easily plug-and-play different modality embedders and LLM architectures. In this example, we illustrate two types of modality embedders: (1) a single-expert embedder that uses the same image encoder for all image modalities, and (2) a modality-driven embedder that selects a specific image encoder based on the input image modality.}
+    \label{fig:architecture}
+\end{figure}
+
+
+Clinical decision-making involves lots of modalities ranging from images (X-Rays, MRI, ...) to signals (Lung Ultrasound, ECG, ...) and 3D scans (Ultrasound, CT, ...).
+Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the backbone needs to get the best performance out of existing pretrained models.
+
+To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
+
+\vspace{0.2cm}
+
+MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then fused with text input embeddings and passed to the LLM for text generation. This intermediate fusion approach allows for modularity, as different modality embedders and LLM architectures can be easily integrated into the framework.
+
+To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron.
+\paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original Llava architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
+\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to leverage the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks.
+
+\subsubsection{Modality-driven embedders}
+\label{sec:modality_driven_embedder}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/multimeditron_fusion.png}
+    \caption{\textbf{Expert fusion strategies for the modality-driven embedder.} We explore four strategies for combining the embeddings from different modality experts, including AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED. Experts are frozen during training, and only the projections and attentions are learned for the modality-driven embedder.}
+    \label{fig:expert_fusion}
+\end{figure}
+
+The modality-driven embedder is composed of a set of image experts specialized in different medical image modalities. \ref{fig:architecture} shows an example with four specialized experts and a generalist one.
+
+Each expert outputs an embedding of the image, and those embeddings need to be combined before being passed to the LLM. We explore four strategies for combining the embeddings illustrated in \ref{fig:expert_fusion}:
+
+\begin{itemize}
+    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. The projected embeddings are then averaged to obtain the final embedding.
+    \item \textbf{AVG-SHARED} (Average and Shared-Projection): A single shared projection layer is used for all experts. The embeddings from each expert are averaged first, and then the averaged embedding is projected into the LLM token space.
+    \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert.
+    \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
+\end{itemize}
+
+Formally, our attention implementation follows the multi-head attention mechanism from \cite{vaswani2023attentionneed}:
+
+\begin{equation*}
+    \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O
+\end{equation*}
+
+where each head is computed as:
+
+\begin{equation*}
+    \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+\end{equation*}
+
+Then, we can write formally the equations for the different fusion strategies as follows:
+\begin{itemize}
+    \item \textbf{AVG-PEP}:
+        \begin{equation}
+            E_{final} = \frac{1}{N} \sum_{i=1}^{N} \text{Proj}_i(E_i)
+        \end{equation}
+    \item \textbf{AVG-SHARED}:
+        \begin{equation}
+            E_{final} = \text{Proj}\left(\frac{1}{N} \sum_{i=1}^{N} E_i\right)
+        \end{equation}
+    \item \textbf{ATTN-PEP}:
+        \begin{equation}
+            E_{final} = \text{MultiHead}\left(\text{Proj}_{gen}(E_{gen}), \{ \text{Proj}_i(E_i) \}_{i=1}^{N}, \{ \text{Proj}_i(E_i) \}_{i=1}^{N}\right)
+        \end{equation}
+    \item \textbf{ATTN-SHARED}:
+        \begin{equation}
+            E_{final} = \text{Proj}\left(\text{MultiHead}\left(E_{gen}, \{ E_i \}_{i=1}^{N}, \{ E_i \}_{i=1}^{N}\right)\right)
+        \end{equation}
+\end{itemize}
+where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
+
+\subsection{Building a scalable, modular, reproducible framework}
+
+Following the recommendations in \cite{pineau2020improvingreproducibilitymachinelearning}, we have taken several steps to ensure the reproducibility of our framework:
+
+\begin{itemize}
+    \item \textbf{Open-source code}: We have made the complete source code of MultiMeditron available on GitHub at \url{github.com/EPFLiGHT/MultiMeditron}
+    \item \textbf{Documentation}: Comprehensive documentation is provided, including setup instructions, usage guidelines, and examples to help users replicate our experiments. This documentation is accessible at \url{epflight.github.io/MultiMeditron/}
+    \item \textbf{Modularity}: The framework is designed to be modular, allowing researchers to easily swap out different components (e.g., modality embedders, LLM architectures) without affecting the overall functionality. This modularity facilitates experimentation and adaptation to different research needs. The whole framework is compatible with the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural}, making it easy to integrate with a wide range of pretrained models and tools.
+    \item \textbf{Docker images}: We provide Docker images that encapsulate the entire software environment, ensuring that users can run the framework without dependency issues. The Docker images support both ARM and x86 architectures.
+    \item \textbf{Dataset access}: The datasets used in our experiments are publicly available. We provide links and instructions for accessing these datasets in the documentation.
+\end{itemize}
+
+\subsection{Data}
+
+Our dataset is composed of multiple publicly available datasets covering various medical imaging modalities. Below, we provide a summary of the dataset characteristics in Table \ref{tab:dataset}. \footnote{The complete dataset mixture is available at \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}.}
+
+\begin{table*}[htbp]
+    \centering
+    \caption{Summary of the MultiMediset data mixture }
+    \label{tab:dataset}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        \textbf{Dataset} & \textbf{Source} & \textbf{License} & \textbf{Samples} & \textbf{Domain} & \textbf{Type} \\
+        \hline
+        BUSI &
+        \href{https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset}{Kaggle} &
+        CC0 &
+        773 &
+        Medical &
+        Captioning \\
+        \hline
+        COVID-US &
+        \href{https://github.com/nrc-cnrc/COVID-US}{GitHub} &
+        AGPL-3.0 &
+        30{,}101 &
+        Medical &
+        Captioning \\
+        \hline
+        CT2US &
+        \href{https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg}{Kaggle} &
+        GPL-2.0 &
+        6{,}461 &
+        Medical &
+        Captioning \\
+        \hline
+        IU Xray &
+        \href{https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university}{Kaggle} &
+        CC BY-NC-ND 4.0 &
+        2{,}964 &
+        Medical &
+        Captioning \\
+        \hline
+        LLaVA Pretrain &
+        \href{https://huggingface.co/datasets/liuhaotian/LLaVA-CC3M-Pretrain-595K}{Hugging Face} &
+        CC-3M, BLIP &
+        558{,}128 &
+        Generalist &
+        Captioning \\
+        \hline
+        LLaVA Instruct &
+        \href{https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data}{Hugging Face} &
+        Apache 2.0 &
+        624{,}252 &
+        Generalist &
+        Q/A \\
+        \hline
+        MAmmoTH &
+        \href{https://huggingface.co/datasets/MAmmoTH-VL/MAmmoTH-VL-Instruct-12M}{Hugging Face} &
+        Apache 2.0 &
+        1{,}639{,}212 &
+        Generalist &
+        Mixed \\
+        \hline
+        MedTrinity &
+        \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face} &
+        Multiple (see data card) &
+        10{,}065{,}045 &
+        Medical &
+        Captioning \\
+        \hline
+        Pixmo Cap &
+        \href{https://huggingface.co/datasets/allenai/pixmo-cap}{Hugging Face} &
+        ODC-BY-1.0 (AI2 RUG) &
+        603{,}029 &
+        Generalist &
+        Captioning \\
+        \hline
+        Pixmo Ask Anything &
+        \href{https://huggingface.co/datasets/allenai/pixmo-ask-model-anything}{Hugging Face} &
+        ODC-BY-1.0 (AI2 RUG) &
+        101{,}454 &
+        Generalist &
+        Q/A \\
+        \hline
+        PMC-VQA &
+        \href{https://huggingface.co/datasets/RadGenome/PMC-VQA}{Hugging Face} &
+        CC BY-SA &
+        176{,}948 &
+        Medical &
+        Q/A \\
+        \hline
+    \end{tabular}
+\end{table*}
+
+
+The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical samples (74\%) and 3,526,075 general-domain samples (26\%).
+
+Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
+
+\subsubsection{Data processing}
+
+To enhance the quality of the training data, we applied several processing steps involving distillation with GPT-5 and reformatting using open-weights models on the following data sources. Each step is clinically validated with doctors to ensure the accuracy and reliability of the processed data.
+
+\paragraph{PMC-VQA} To provide rationales for the answers in the PMC-VQA dataset \cite{zhang2023pmcvqa}, we employed GPT-5 to generate detailed explanations. For each image-question pair, GPT-5 was prompted to produce a comprehensive rationale justifying the provided answer. To ensure the clinical correctness and overall quality of the generated rationales, medical doctors were involved in the process by reviewing sampled outputs. Based on their feedback, we iteratively refined and tuned the prompting strategy until the generated rationales met the desired standards.
+
+\paragraph{MedTrinity} The original MedTrinity dataset \cite{xie2024medtrinity25mlargescalemultimodaldataset} contains image-caption pairs with captions that often lack structure and clarity. To improve the quality of these captions, we use an open-weight LLM, Qwen-3 \cite{yang2025qwen3technicalreport} to reformat them into a more structured conversational format.
+
+Because of the size of the MedTrinity dataset (10M samples), we parallelize the reformatting process on multiple nodes by first sharding the dataset into smaller chunks and then processing each chunk independently on a separate node. This distributed approach allows us to efficiently handle the large volume of data while ensuring consistent reformatting across the entire dataset.
+
+% TODO: In the future, provide a link to the processing scripts.
+
+\subsection{Training}
+\label{sec:training}
+
+The training of MultiMeditron follows the standard supervised fine-tuning (SFT) procedure proposed in \cite{liu2023visualinstructiontuning} with a 2-stage training process:
+\begin{itemize}
+    \item \textbf{Stage 1 - Alignment}: In the alignment phase, only the projection layers are trained while the experts and LLM are frozen. This allows the model to align the expert embeddings with the LLM token space without modifying the pretrained weights of the experts and LLM.
+    \item \textbf{Stage 2 - End to end}: In the end-to-end phase, the projections and the LLM are fine-tuned jointly while the experts are frozen. This allows the model to adapt the LLM to better utilize the multimodal information from the experts.
+\end{itemize}
+
+Notice that throughout the entire training process, the modality experts remain frozen for stable alignment and to prevent catastrophic forgetting of their pretrained knowledge.
+
+\subsubsection{Infrastructure}
+
+In addition to its modularity, MultiMeditron is designed to be scalable, allowing us to train large models on massive datasets. MultiMeditron is built on top of the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural} and uses Deepspeed Zero-3 parallelism \cite{rajbhandari2020zeromemoryoptimizationstraining} to efficiently train large models across multiple GPUs.
+
+We conducted training on the CSCS cluster using NVIDIA GH200 GPUs using 32 nodes of 4 GPUs each, for a total of 128 GPUs \cite{martinasso2025alpsversatileresearchinfrastructure}.
+Each training job is orchestrated using the SLURM workload manager, which allows us to efficiently manage and schedule our training jobs on the cluster.
+
+\subsubsection{Experiments}
+
+To show the flexibility of MultiMeditron, we conduct experiments with different configurations of modality embedders and LLM architectures. Specifically, we experiment with:
+\begin{itemize}
+    \item \textbf{Modality embedders}: We compare the performance of a generalist single-expert embedder, a specialized single-expert embedder and the modality-driven embedder with different expert describec in Section \ref{sec:modality_driven_embedder}. Specifically, we choose \texttt{openai/clip-vit-base-patch32} \cite{radford2021learningtransferablevisualmodels} as the generalist expert and BiomedCLIP \cite{zhang2025biomedclipmultimodalbiomedicalfoundation} as the specialized single-expert embedder.
+    \item \textbf{Expert fusion strategies}: For the modality-driven embedder, we compare the four expert fusion strategies described in Section \ref{sec:modality_driven_embedder}: AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED.
+    \item \textbf{LLM architectures}: We experiment with different LLM architectures, including Llama 3.1 Instruct 8B \cite{grattafiori2024llama3herdmodels}, Qwen-3 Instruct 4B \cite{yang2025qwen3technicalreport} and Apertus Instruct 8B \cite{apertus2025apertusdemocratizingopencompliant}.
+\end{itemize}
+
+Across all experiments, we use the same training dataset described in \ref{sec:training} and the same hyperparameters summarized in Table \ref{tab:hyperparameters}.
+
+% Hyperparameters
+\begin{table}[htbp]
+    \centering
+    \caption{Training hyperparameters for MultiMeditron}
+    \label{tab:hyperparameters}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Hyperparameter} & \textbf{Alignment} & \textbf{End-to-end} \\
+        \midrule
+        Optimizer & AdamW & AdamW \\
+        Learning Rate & $1e-4$ & $1e-5$ \\
+        Per device batch Size & 4 & 4 \\
+        Gradient accumulation steps & 8 & 8 \\
+        Total batch size & 4096 & 4096 \\
+        Learning Rate Scheduler & Cosine Decay & Cosine Decay \\
+        Min Learning Rate & $3e-5$ & $3e-6$ \\
+        Mixed Precision & BF16 & BF16 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{absolutelynopagebreak}
+\subsection{Evaluation}
+
+To ensure reproducibility of our benchmarking results, we integrate MultiMeditron with the \texttt{lmms-eval} framework \cite{lmms_eval2024}.
+
+To evaluate the performance of MultiMeditron, we use the following benchmarks:
+\begin{itemize}
+    \item \textbf{GMAI-MMBench}: A multimodal medical MCQ proposed in \cite{chen2024gmaimmbenchcomprehensivemultimodalevaluation} that covers 38 medical image modalities, 18 clinical-related tasks, 18 departments, and 4 perceptual granularities in a Visual Question Answering (VQA) format. We use the official test split for evaluation.
+    \item \textbf{SLAKE}: A multimodal medical benchmark proposed in \cite{liu2021slakesemanticallylabeledknowledgeenhanceddataset} that comprises open-ended questions and Y/N questions. This benchmark focuses on a variety of body parts and richer modalities.
+    \item \textbf{PathVQA}: A multimodal medical benchmark proposed in \cite{he2020pathvqa30000questionsmedical} with open-ended questions and Y/N questions. This benchmark has been manually verified by medical experts to ensure the correctness of the questions and answers.
+\end{itemize}
+\end{absolutelynopagebreak}
+
+For each benchmark, we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets.
+
+Although to evaluate open-ended questions, we use exact string matching to compute accuracy, we acknowledge that this method may not fully capture the correctness of the answers due to potential variations in phrasing. In future work, we plan to integrate more sophisticated evaluation metrics, such as LLM-as-a-judge to better assess the quality of open-ended responses.
