@@ -1,7 +1,168 @@
-\section{Supplementary methods}
+% \section{Supplementary methods}
+%
+% Include detailed methodological information that would disrupt the flow of the main text. Present additional analyses or derivations.
+%
+% \section{Additional results}
+%
+% Present supporting analyses and figures that complement your main results. Include any results referenced but not shown in the main text.
+\section{Architecture of the MultiMeditron framework}
 
-Include detailed methodological information that would disrupt the flow of the main text. Present additional analyses or derivations.
+In this part, we discuss the engineering philosophy behind the MultiMeditron framework and provide a detailed description of its architecture. As stated before, MultiMeditron is designed to be a modular and extensible framework for multi-modal learning. The core idea is to separate the different components of the training procedure into distinct modules that can be easily swapped or modified without affecting the overall structure of the framework.
 
-\section{Additional results}
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \tikzset{node distance=2cm, auto}
+        % Define styles
+        \tikzstyle{data} = [rectangle, draw, minimum width=3cm, minimum height=1cm, text centered]
+        \tikzstyle{module} = [rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered]
+        \tikzstyle{tokenizer} = [rectangle, draw, rounded corners, minimum width=9cm, minimum height=1cm, text centered]
+        \tikzstyle{modality_embedder} = [rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered, fill=blue!20]
+        \tikzstyle{llm} = [rectangle, draw, rounded corners, minimum width=9cm, minimum height=1cm, text centered, fill=blue!20]
+        \tikzstyle{arrow} = [thick,->,>=stealth]
 
-Present supporting analyses and figures that complement your main results. Include any results referenced but not shown in the main text.
+        % Nodes
+        \node[data] (dataset) {Dataset};
+        \node[module, right=3cm of dataset] (modality_loader) {Modality Loader};
+        % \node[module, below=1cm of dataset] (tokenizer) {Tokenizer};
+        \node[module, below=1cm of modality_loader ] (modality_preprocessor) {Modality Preprocessor};
+        \coordinate(a) at ($(dataset)!0.5!(modality_loader)$);
+        \node[tokenizer, below=3.5cm of a] (tokenizer) {Tokenizer};
+
+        \node[modality_embedder, below=3.0cm of modality_preprocessor] (modality_embedder) {Modality Embedder};
+
+
+        \node[tokenizer, below=3.0cm of tokenizer] (interleaver) {Token Interleaver};
+        \node[llm, below=1.0cm of interleaver] (llm) {LLM};
+
+
+        % Arrows
+        \draw[arrow] (dataset) -- (modality_loader) node[midway, above] {\small{\textit{Raw modality}}};
+        \draw[arrow] (dataset) -- (dataset.south |- tokenizer.north) node[midway, left] {\small{\textit{Text data}}};
+        \draw[arrow] (modality_loader) -- (modality_loader.south |- modality_preprocessor.north) node[midway, right] {\small{\textit{Unified modality format}}};
+        \draw[arrow] (modality_preprocessor) -- (modality_preprocessor.south |- tokenizer.north) node[midway, right] {\small{\textit{Preprocessed modality}}};
+        \draw[arrow] (modality_embedder) -- (modality_embedder.south |- interleaver.north) node[midway, right] {\small{\textit{Modality embeddings}}};
+        \draw[arrow] (dataset.south |- tokenizer.south) -- (dataset.south |- interleaver.north) node[midway, left] {\small{\textit{Text tokens IDs}}};
+        \draw[arrow] (modality_preprocessor.south |- tokenizer.south) -- (modality_embedder) node[midway, right] {\small{\textit{Preprocessed modality}}};
+        \draw[arrow] (interleaver) -- (llm) node[midway, right] {\small{\textit{Interleaved embeddings}}};
+
+    \end{tikzpicture}
+    \caption{Architecture of the MultiMeditron framework showing the modular components and their interactions. In blue are highlighted the components that are trainable}
+    \label{fig:multimeditron_modules_architecture}
+\end{figure}
+
+In Figure \ref{fig:multimeditron_modules_architecture}, we present the architecture of the MultiMeditron framework, highlighting its modular components and their interactions. The main components of the framework are as follows:
+\begin{itemize}
+    \item \textbf{Modality Loader}: This module is responsible for loading the raw data from various modalities (e.g., images, text, audio) and converting them into a unified format that can be processed by the subsequent modules. For instance, images are converted to PIL Image objects.
+    \item \textbf{Modality Preprocessor}: This module takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding. This module depends on the modality embedder being used.
+    \item \textbf{Tokenizer}: This module is responsible for converting text data into token IDs that can be processed by the LLM, and allocating space for modality embeddings. We describe the tokenizer in more detail in Section \ref{sec:tokenizer}.
+    \item \textbf{Modality Embedder}: This module uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
+    \item \textbf{Token Interleaver}: This module convers the text token IDs into embeddings. Then, it combines the text embeddings and modality embeddings into a single sequence that can be processed by the LLM.
+    \item \textbf{LLM (Large Language Model)}: This module integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
+\end{itemize}
+
+\subsection{Modality data flow}
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \resizebox{\columnwidth}{!}{
+            \begin{tikzpicture}[
+                block/.style={
+                    rectangle,
+                    draw,
+                    rounded corners,
+                    minimum width=3.5cm,
+                    minimum height=1.0cm,
+                    align=center
+                },
+                arrow/.style={
+                    ->,
+                    thick
+                },
+                node distance=1.0cm
+                ]
+
+                % Nodes (blocks)
+                \node[block] (loader) {Modality Loader};
+                \node[block, below=of loader] (preprocessor) {Modality preprocessor};
+                \node[block, below=of preprocessor] (modality_embedder) {Modality embedder};
+                \node[block, below=of modality_embedder] (llm) {LLM};
+
+                % Nodes (coordinates)
+                \node[coordinate, above=of loader, xshift=-0.8cm] (in1) {};
+                \node[coordinate, above=of loader, xshift=0.8cm] (in2) {};
+
+                % Arrows
+                \draw[arrow] (in1) -- (loader) node[midway,left,xshift=-0.1cm] {\small{\textit{Modality format 1}}};
+                \draw[arrow] (in2) -- (loader) node[midway,right,xshift=0.1cm] {\small{\textit{Modality format 2}}};
+                \draw[arrow] (loader) -- (preprocessor) node[midway,left] {\small{\textit{Unified modality format}}};
+                \draw[arrow] (preprocessor) -- (modality_embedder) node[midway,left] {\small{\textit{Tensor}}};
+                \draw[arrow] (modality_embedder) -- (llm) node[midway,left] {\small{\textit{Tensor}}};
+
+            \end{tikzpicture}
+        }
+        \caption{Generic data flow for any modality type}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \resizebox{\columnwidth}{!}{
+            \begin{tikzpicture}[
+                block/.style={
+                    rectangle,
+                    draw,
+                    rounded corners,
+                    minimum width=3.5cm,
+                    minimum height=1.0cm,
+                    align=center
+                },
+                arrow/.style={
+                    ->,
+                    thick
+                },
+                node distance=1.0cm
+                ]
+
+                % Nodes (blocks)
+                \node[block] (loader) {Image Loader};
+                \node[block, below=of loader] (preprocessor) {CLIP preprocessor};
+                \node[block, below=of preprocessor] (modality_embedder) {CLIP model};
+                \node[block, below=of modality_embedder] (llm) {LLM};
+
+                % Nodes (coordinates)
+                \node[coordinate, above=of loader, xshift=-0.8cm] (in1) {};
+                \node[coordinate, above=of loader, xshift=0.8cm] (in2) {};
+
+                % Arrows
+                \draw[arrow] (in1) -- (loader) node[midway,left,xshift=-0.1cm] {\small{\texttt{/path/to/image.jpg}}};
+                \draw[arrow] (in2) -- (loader) node[midway,right,xshift=0.1cm] {\small{\textit{image bytes}}};
+                \draw[arrow] (loader) -- (preprocessor) node[midway,left] {\small{\texttt{PIL Image}}};
+                \draw[arrow] (preprocessor) -- (modality_embedder) node[midway,left] {\small{\textit{Tensor}}};
+                \draw[arrow] (modality_embedder) -- (llm) node[midway,left] {\small{\textit{Tensor}}};
+
+            \end{tikzpicture}
+        }
+
+        \caption{Example of data flow for images dataset and a CLIP}
+    \end{subfigure}
+
+    \caption{Modality data flow for the MultiMeditron architecture with a generic template and an example for image modality.}
+    \label{fig:modality_data_flow}
+\end{figure}
+
+In \ref{fig:modality_data_flow}, we illustrate the data flow for a generic modality as well as a specific example for image data. The data flow consists of four main components:
+\begin{itemize}
+    \item \textbf{Modality Loader}: This component is responsible for loading the raw data from various formats (e.g., file paths, byte streams) and converting them into a unified format that can be processed by the subsequent components.
+    \item \textbf{Modality Preprocessor}: This component takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding.
+    \item \textbf{Modality Embedder}: This component uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
+    \item \textbf{LLM (Large Language Model)}: This component integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
+\end{itemize}
+
+\subsection{Tokenizer}
+\label{sec:tokenizer}
+
+The tokenizer in the MultiMeditron framework is a crucial component that bridges the gap between text data and modality embeddings. Its primary function is to convert text data into token IDs that can be processed by the LLM, while also allocating space for modality embeddings within the token sequence.
+
+

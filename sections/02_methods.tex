@@ -121,7 +121,7 @@ To enable more powerful image understanding capabilities, we integrate different
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/multimeditron_fusion.png}
+    \includegraphics[width=0.8\textwidth]{figures/multimeditron_fusion.png}
     \caption{\textbf{Expert fusion strategies for the modality-driven embedder.} We explore four strategies for combining the embeddings from different modality experts, including AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED. Experts are frozen during training, and only the projections and attentions are learned for the modality-driven embedder.}
     \label{fig:expert_fusion}
 \end{figure}
@@ -149,6 +149,7 @@ where each head is computed as:
     \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
 \end{equation*}
 
+\begin{absolutelynopagebreak}
 Then, we can write formally the equations for the different fusion strategies as follows:
 \begin{itemize}
     \item \textbf{AVG-PEP}:
@@ -169,6 +170,7 @@ Then, we can write formally the equations for the different fusion strategies as
         \end{equation}
 \end{itemize}
 where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
+\end{absolutelynopagebreak}
 
 \subsection{Building a scalable, modular, reproducible framework}
 

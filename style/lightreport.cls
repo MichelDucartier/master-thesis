@@ -46,6 +46,7 @@
 \RequirePackage{setspace}
 \RequirePackage{titlesec}
 \RequirePackage{fix-cm}
+\RequirePackage{tikz}
 \RequirePackage{babel}  % Remove the [english] option here
 \addto\captionsenglish{%
   \def\ackname{Acknowledgments}%  American spelling
