@@ -1,98 +1,9 @@
-% \label{sec:methods}
-%
-% \subsection{Study design}
-%
-% Describe your overall approach and provide the rationale for your chosen methodology. Your description should be detailed enough that other researchers could reproduce your work.
-%
-% \subsection{Data}
-%
-% \subsubsection{Dataset characteristics}
-%
-% Describe your data sources, collection methods, and time period. Define all inclusion and exclusion criteria. Specify measures taken to ensure data quality. Present this information in a clear table format:
-%
-% \begin{table}[htbp]
-%     \centering
-%     \caption{Present your dataset characteristics here. Include total sample size, training/validation/test split, and relevant demographic information.}
-%     \label{tab:dataset}
-%     \begin{threeparttable}
-%     \resizebox{0.4\textwidth}{!}{%
-%     \begin{tabular}{llr}
-%     \toprule
-%     \textbf{Characteristic} & \textbf{Category} & \textbf{Count (\%)}\tnote{1} \\
-%     \midrule
-%     Sample Size & Total & 1000 (100.0\%)\\
-%                & Training & 700 (70.0\%) \\
-%                & Validation & 150 (15.0\%) \\
-%                & Test & 150 (15.0\%) \\
-%     \midrule
-%     Gender & Male & 520 (52.0\%) \\
-%            & Female & 460 (46.0\%) \\
-%            & Other & 20 (2.0\%) \\
-%     \midrule
-%     Age Group\tnote{2} & 18-24 & 200 (20.0\%) \\
-%              & 25-34 & 350 (35.0\%) \\
-%              & 35-44 & 250 (25.0\%) \\
-%              & 45-54 & 150 (15.0\%) \\
-%              & 55+ & 50 (5.0\%) \\
-%     \midrule
-%     Education\tnote{3} & High School & 300 (30.0\%) \\
-%              & Bachelor's & 450 (45.0\%) \\
-%              & Master's & 200 (20.0\%) \\
-%              & Ph.D. & 50 (5.0\%) \\
-%     \bottomrule
-%     \end{tabular}%
-%     }
-%     \begin{tablenotes}
-%       \small
-%       \item[1] All percentages are rounded to one decimal place
-%       \item[2] Age groups are presented in years
-%       \item[3] Education represents the highest level completed
-%     \end{tablenotes}
-%     \end{threeparttable}
-% \end{table}
-%
-% \subsection{Methodology}
-%
-% \subsubsection{Preprocessing pipeline}
-%
-% Document each step of your preprocessing pipeline in sequence. Explain the rationale behind each decision made during preprocessing. Include any parameters or thresholds used.
-%
-% \subsubsection{Model architecture}
-%
-% Present your model's complete architecture. Include a detailed diagram showing all components and their connections. Your diagram should look similar to this:
-%
-% \begin{figure}[htbp]
-%     \centering
-%     \includegraphics[width=0.8\textwidth]{example-image}
-%     \caption{Create a detailed diagram of your model architecture. Label all components,
-%              connections, and data flows. Include input and output dimensions.}
-%     \label{fig:modelarch}
-% \end{figure}
-%
-% \subsection{Implementation details}
-%
-% \subsubsection{Software and hardware}
-%
-% List all software tools, libraries, and versions used. Specify the computing resources required to reproduce your work. Include any special hardware requirements.
-%
-% \subsubsection{Hyperparameters}
-%
-% Document all hyperparameters used in your model. Explain how you selected these values. Describe any optimization or tuning processes used.
-%
-% \subsection{Evaluation methodology}
-%
-% \subsubsection{Metrics}
-%
-% Define each evaluation metric used in your study. Explain why these metrics are appropriate for your research questions. Include formulas where necessary.
-%
-% \subsubsection{Statistical analysis}
-%
-% Describe all statistical tests performed. Include power calculations where applicable. Specify significance levels and confidence intervals used.
-
 \section{Methods}
 \label{sec:methods}
 
 \subsection{Model architecture}
+
+
 
 % Figure of the architecture
 \begin{figure}[htbp]
@@ -104,17 +15,24 @@
 
 
 Clinical decision-making involves lots of modalities ranging from images (X-Rays, MRI, ...) to signals (Lung Ultrasound, ECG, ...) and 3D scans (Ultrasound, CT, ...).
-Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the backbone needs to get the best performance out of existing pretrained models.
+Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the multimodal architecture needs to get the best performance out of existing pretrained models.
 
 To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
 
 \vspace{0.2cm}
 
-MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then fused with text input embeddings and passed to the LLM for text generation. This intermediate fusion approach allows for modularity, as different modality embedders and LLM architectures can be easily integrated into the framework.
+MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then interleaved with text input embeddings and passed to the language decoder for text generation. This approach offers several advantages:
 
-To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron.
+\begin{itemize}
+    \item \textbf{Modularity:} This intermediate fusion approach allows for modularity, as different modality embedders and language decoder architectures can be easily swapped.
+    \item \textbf{Efficient use of data:} As this architecture leverages the use of pretrained modality embedder and language model, it does not require as much data as a multimodal model built entirely from scratch.
+\end{itemize}
+
+\vspace{5mm}
+
+To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron:
 \paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original Llava architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
-\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to leverage the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks.
+\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to harness the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks. We describe this approach in more detail in Section \ref{sec:modality_driven_embedder}
 
 \subsubsection{Modality-driven embedders}
 \label{sec:modality_driven_embedder}
@@ -172,128 +90,6 @@ Then, we can write formally the equations for the different fusion strategies as
 where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
 \end{absolutelynopagebreak}
 
-\subsection{Building a scalable, modular, reproducible framework}
-
-Following the recommendations in \cite{pineau2020improvingreproducibilitymachinelearning}, we have taken several steps to ensure the reproducibility of our framework:
-
-\begin{itemize}
-    \item \textbf{Open-source code}: We have made the complete source code of MultiMeditron available on GitHub at \url{github.com/EPFLiGHT/MultiMeditron}
-    \item \textbf{Documentation}: Comprehensive documentation is provided, including setup instructions, usage guidelines, and examples to help users replicate our experiments. This documentation is accessible at \url{epflight.github.io/MultiMeditron/}
-    \item \textbf{Modularity}: The framework is designed to be modular, allowing researchers to easily swap out different components (e.g., modality embedders, LLM architectures) without affecting the overall functionality. This modularity facilitates experimentation and adaptation to different research needs. The whole framework is compatible with the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural}, making it easy to integrate with a wide range of pretrained models and tools.
-    \item \textbf{Docker images}: We provide Docker images that encapsulate the entire software environment, ensuring that users can run the framework without dependency issues. The Docker images support both ARM and x86 architectures.
-    \item \textbf{Dataset access}: The datasets used in our experiments are publicly available. We provide links and instructions for accessing these datasets in the documentation.
-\end{itemize}
-
-\subsection{Data}
-
-Our dataset is composed of multiple publicly available datasets covering various medical imaging modalities. Below, we provide a summary of the dataset characteristics in Table \ref{tab:dataset}. \footnote{The complete dataset mixture is available at \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}.}
-
-\begin{table*}[htbp]
-    \centering
-    \caption{Summary of the MultiMediset data mixture }
-    \label{tab:dataset}
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{|c|c|c|c|c|c|}
-        \hline
-        \textbf{Dataset} & \textbf{Source} & \textbf{License} & \textbf{Samples} & \textbf{Domain} & \textbf{Type} \\
-        \hline
-        BUSI &
-        \href{https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset}{Kaggle} &
-        CC0 &
-        773 &
-        Medical &
-        Captioning \\
-        \hline
-        COVID-US &
-        \href{https://github.com/nrc-cnrc/COVID-US}{GitHub} &
-        AGPL-3.0 &
-        30{,}101 &
-        Medical &
-        Captioning \\
-        \hline
-        CT2US &
-        \href{https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg}{Kaggle} &
-        GPL-2.0 &
-        6{,}461 &
-        Medical &
-        Captioning \\
-        \hline
-        IU Xray &
-        \href{https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university}{Kaggle} &
-        CC BY-NC-ND 4.0 &
-        2{,}964 &
-        Medical &
-        Captioning \\
-        \hline
-        LLaVA Pretrain &
-        \href{https://huggingface.co/datasets/liuhaotian/LLaVA-CC3M-Pretrain-595K}{Hugging Face} &
-        CC-3M, BLIP &
-        558{,}128 &
-        Generalist &
-        Captioning \\
-        \hline
-        LLaVA Instruct &
-        \href{https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data}{Hugging Face} &
-        Apache 2.0 &
-        624{,}252 &
-        Generalist &
-        Q/A \\
-        \hline
-        MAmmoTH &
-        \href{https://huggingface.co/datasets/MAmmoTH-VL/MAmmoTH-VL-Instruct-12M}{Hugging Face} &
-        Apache 2.0 &
-        1{,}639{,}212 &
-        Generalist &
-        Mixed \\
-        \hline
-        MedTrinity &
-        \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face} &
-        Multiple (see data card) &
-        10{,}065{,}045 &
-        Medical &
-        Captioning \\
-        \hline
-        Pixmo Cap &
-        \href{https://huggingface.co/datasets/allenai/pixmo-cap}{Hugging Face} &
-        ODC-BY-1.0 (AI2 RUG) &
-        603{,}029 &
-        Generalist &
-        Captioning \\
-        \hline
-        Pixmo Ask Anything &
-        \href{https://huggingface.co/datasets/allenai/pixmo-ask-model-anything}{Hugging Face} &
-        ODC-BY-1.0 (AI2 RUG) &
-        101{,}454 &
-        Generalist &
-        Q/A \\
-        \hline
-        PMC-VQA &
-        \href{https://huggingface.co/datasets/RadGenome/PMC-VQA}{Hugging Face} &
-        CC BY-SA &
-        176{,}948 &
-        Medical &
-        Q/A \\
-        \hline
-    \end{tabular}
-\end{table*}
-
-
-The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical samples (74\%) and 3,526,075 general-domain samples (26\%).
-
-Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
-
-\subsubsection{Data processing}
-
-To enhance the quality of the training data, we applied several processing steps involving distillation with GPT-5 and reformatting using open-weights models on the following data sources. Each step is clinically validated with doctors to ensure the accuracy and reliability of the processed data.
-
-\paragraph{PMC-VQA} To provide rationales for the answers in the PMC-VQA dataset \cite{zhang2023pmcvqa}, we employed GPT-5 to generate detailed explanations. For each image-question pair, GPT-5 was prompted to produce a comprehensive rationale justifying the provided answer. To ensure the clinical correctness and overall quality of the generated rationales, medical doctors were involved in the process by reviewing sampled outputs. Based on their feedback, we iteratively refined and tuned the prompting strategy until the generated rationales met the desired standards.
-
-\paragraph{MedTrinity} The original MedTrinity dataset \cite{xie2024medtrinity25mlargescalemultimodaldataset} contains image-caption pairs with captions that often lack structure and clarity. To improve the quality of these captions, we use an open-weight LLM, Qwen-3 \cite{yang2025qwen3technicalreport} to reformat them into a more structured conversational format.
-
-Because of the size of the MedTrinity dataset (10M samples), we parallelize the reformatting process on multiple nodes by first sharding the dataset into smaller chunks and then processing each chunk independently on a separate node. This distributed approach allows us to efficiently handle the large volume of data while ensuring consistent reformatting across the entire dataset.
-
-% TODO: In the future, provide a link to the processing scripts.
-
 \subsection{Training}
 \label{sec:training}
 
@@ -314,6 +110,24 @@ Each training job is orchestrated using the SLURM workload manager, which allows
 
 \subsubsection{Experiments}
 
+\begin{table}
+    \centering
+    \begin{tabular}{ccc}
+        \toprule
+        \textbf{Experiment name} & \textbf{Base LLM} & \textbf{Vision encoder} \\
+        \midrule
+        Llama CLIP & LLaMa 3.1 Instruct 8B & clip-vit-base-patch32
+ \\
+        Llama BiomedCLIP & LLaMa 3.1 Instruct 8B & BiomedCLIP \\
+        Llama ATTN-PEP & LLaMa 3.1 Instruct 8B & MultiMeditron ATTN-PEP \\
+        Qwen3 BiomedCLIP & Qwen3-4B & BiomedCLIP \\
+        Apertus BiomedCLIP & Apertus-8B & BiomedCLIP \\
+        \bottomrule
+    \end{tabular}
+    \caption{List of conducted experiments on different LLMs and vision encoders for MultiMeditron suite of models}
+    \label{tab:experiments}
+\end{table}
+
 To show the flexibility of MultiMeditron, we conduct experiments with different configurations of modality embedders and LLM architectures. Specifically, we experiment with:
 \begin{itemize}
     \item \textbf{Modality embedders}: We compare the performance of a generalist single-expert embedder, a specialized single-expert embedder and the modality-driven embedder with different expert describec in Section \ref{sec:modality_driven_embedder}. Specifically, we choose \texttt{openai/clip-vit-base-patch32} \cite{radford2021learningtransferablevisualmodels} as the generalist expert and BiomedCLIP \cite{zhang2025biomedclipmultimodalbiomedicalfoundation} as the specialized single-expert embedder.
@@ -321,13 +135,21 @@ To show the flexibility of MultiMeditron, we conduct experiments with different 
     \item \textbf{LLM architectures}: We experiment with different LLM architectures, including Llama 3.1 Instruct 8B \cite{grattafiori2024llama3herdmodels}, Qwen-3 Instruct 4B \cite{yang2025qwen3technicalreport} and Apertus Instruct 8B \cite{apertus2025apertusdemocratizingopencompliant}.
 \end{itemize}
 
-Across all experiments, we use the same training dataset described in \ref{sec:training} and the same hyperparameters summarized in Table \ref{tab:hyperparameters}.
+We conducted 6 experiments to test the performance of MultiMeditron. The details of the 6 experiments are listed in Table \ref{tab:experiments}. Llama CLIP acts as our baseline. We attempt to increase the performance of MultiMeditron by:
+\begin{enumerate}
+    \item Changing the vision encoder to a medically specialized one with either BiomedCLIP or our modality-driven experts
+    \item Changing the base LLM architecture, from Llama 3.1 Instruct 8B to Qwen3-4B or Apertus-8B
+\end{enumerate}
+
+Multimodal models trained with medically specialized vision embedders outperform those using general-purpose vision embedders \cite{sellergren2025medgemmatechnicalreport}. Accordingly, we adopt BiomedCLIP in our architectures when replacing the base LLM with Qwen3-4B or Apertus Instruct 8B.
+
+BiomedCLIP is trained exclusively on open data from PubMed Central and is built upon fully open models, including PubMedBERT a Vision Transformer pretrained on general-domain public data \cite{zhang2025biomedclipmultimodalbiomedicalfoundation,dosovitskiy2020vit}.
+
+Across all experiments, we use the same training dataset described in \ref{tab:dataset} and the same hyperparameters summarized in Table \ref{tab:hyperparameters}.
 
 % Hyperparameters
 \begin{table}[htbp]
     \centering
-    \caption{Training hyperparameters for MultiMeditron}
-    \label{tab:hyperparameters}
     \begin{tabular}{lcc}
         \toprule
         \textbf{Hyperparameter} & \textbf{Alignment} & \textbf{End-to-end} \\
@@ -342,7 +164,134 @@ Across all experiments, we use the same training dataset described in \ref{sec:t
         Mixed Precision & BF16 & BF16 \\
         \bottomrule
     \end{tabular}
+    \caption{Training hyperparameters for all MultiMeditron training.}
+    \label{tab:hyperparameters}
 \end{table}
+
+
+
+\subsection{Data}
+
+Our dataset is composed of multiple publicly available datasets covering various medical imaging modalities. Below, we provide a summary of the dataset characteristics in Table \ref{tab:dataset}. \footnote{The complete dataset mixture is available at \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}.}
+
+\begin{table*}[htbp]
+    \centering
+
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{cccccc}
+        \toprule
+        \textbf{Phase} & \textbf{Dataset} & \textbf{Source} & \textbf{License} & \textbf{Samples} & \textbf{Domain}  \\
+        \midrule
+        \multirow{4}{5em}{Alignment}
+        & LLaVA Pretrain
+        & \href{https://huggingface.co/datasets/liuhaotian/LLaVA-CC3M-Pretrain-595K}{Hugging Face}
+        & CC-3M, BLIP
+        & 558{,}128
+        & Generalist \\
+        % & \hline
+
+        & Pixmo Cap
+        & \href{https://huggingface.co/datasets/allenai/pixmo-cap}{Hugging Face}
+        & ODC-BY-1.0 (AI2 RUG)
+        & 603{,}029
+        & Generalist \\
+        % \hline
+
+        & Pixmo Ask Anything
+        & \href{https://huggingface.co/datasets/allenai/pixmo-ask-model-anything}{Hugging Face}
+        & ODC-BY-1.0 (AI2 RUG)
+        & 101{,}454
+        & Generalist \\
+
+        % \hline
+        & \makecell{MedTrinity-Alignment \\ \small{(sampled)}}
+        & \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face}
+        & Multiple (see data card)
+        & 100{,}000
+        & Medical \\
+        \midrule
+
+
+        \multirow{8}{5em}{End-to-end}
+        & BUSI
+        & \href{https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset}{Kaggle}
+        & CC0
+        & 773
+        & Medical \\
+
+        & COVID-US
+        & \href{https://github.com/nrc-cnrc/COVID-US}{GitHub}
+        & AGPL-3.0
+        & 30{,}101
+        & Medical \\
+
+        & CT2US
+        & \href{https://www.kaggle.com/datasets/siatsyx/ct2usforkidneyseg}{Kaggle}
+        & GPL-2.0
+        & 6{,}461
+        & Medical \\
+
+        & IU Xray
+        & \href{https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university}{Kaggle}
+        & CC BY-NC-ND 4.0
+        & 2{,}964
+        & Medical \\
+
+        & LLaVA Instruct
+        & \href{https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data}{Hugging Face}
+        & Apache 2.0
+        & 624{,}252
+        & Generalist \\
+
+        & MAmmoTH
+        & \href{https://huggingface.co/datasets/MAmmoTH-VL/MAmmoTH-VL-Instruct-12M}{Hugging Face}
+        & Apache 2.0
+        & 1{,}639{,}212
+        & Generalist \\
+
+        & MedTrinity
+        & \href{https://huggingface.co/datasets/UCSC-VLAA/MedTrinity-25M}{Hugging Face}
+        & Multiple (see data card)
+        & 10{,}065{,}045
+        & Medical \\
+
+        & PMC-VQA
+        & \href{https://huggingface.co/datasets/RadGenome/PMC-VQA}{Hugging Face}
+        & CC BY-SA
+        & 176{,}948
+        & Medical \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of the MultiMediset data mixture. }
+    \label{tab:dataset}
+\end{table*}
+
+
+The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical samples (74\%) and 3,526,075 general-domain samples (26\%).
+
+Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
+
+MultiMeditron relies on a two-phase training strategy consisting of an alignment phase and an end-to-end phase. The objective of the alignment phase is to align the modality-specific embeddings with the language decoder’s token space by exclusively training the projection layers. Consequently, this phase requires image-text captioning data to enable the model to learn diverse visual representations. To achieve this, we incorporate generalist captioning datasets during this alignment phase such as the Pixmo datasets, LLaVA Pretrain. This allows the model to learn generalist image-text captioning representations.
+In addition, to ensure alignment on medical data, we sample 100,000 examples from the MedTrinity dataset for use during this phase. By leveraging this MedTrinity subset, we aim to optimize the model’s ability to produce coherent medical representations in addition to its generalist representations.
+
+In contrast, the end-to-end phase requires substantially more data, as the language model is unfrozen and jointly optimized with the rest of the architecture. This requirement explains why the majority of the training data is allocated to this phase. During end-to-end training, we leverage high-quality, task-diverse data encompassing a range of objectives, including image captioning and visual question answering.
+First, we leverage MedTrinity's size and high quality captions to learn diverse representations and to describe images with more granularity.
+Second, in order to fully represent the wide range of medical modalities, we incorporate datasets such as BUSI, COVID-US and CT2US which target Ultrasound data as those modalities are often under-represented in large public medical imaging datasets.
+Third, with PMC-VQA, we focus on tasks that require visual question answering for medical purposes.Finally, we incorporate generalist instruction-tuning datasets such as MAmmoTH and LLaVa Instruct to increase MultiMeditron's capabilities on generalist non-medical tasks.
+
+
+\subsubsection{Data processing}
+
+To enhance the quality of the training data, we applied several processing steps involving distillation with GPT-5 and reformatting using open-weights models on the following data sources. Each step is clinically validated with doctors to ensure the accuracy and reliability of the processed data.
+
+\paragraph{PMC-VQA} To provide rationales for the answers in the PMC-VQA dataset \cite{zhang2023pmcvqa}, we employed GPT-5 to generate detailed explanations. For each image-question pair, GPT-5 was prompted to produce a comprehensive rationale justifying the provided answer. To ensure the clinical correctness and overall quality of the generated rationales, medical doctors were involved in the process by reviewing sampled outputs. Based on their feedback, we iteratively refined and tuned the prompting strategy until the generated rationales met the desired standards.
+
+\paragraph{MedTrinity} The original MedTrinity dataset \cite{xie2024medtrinity25mlargescalemultimodaldataset} contains image-caption pairs with captions that often lack structure and clarity. To improve the quality of these captions, we use an open-weight LLM, Qwen-3 \cite{yang2025qwen3technicalreport} to reformat them into a more structured conversational format.
+
+Because of the size of the MedTrinity dataset (10M samples), we parallelize the reformatting process on multiple nodes by first sharding the dataset into smaller chunks and then processing each chunk independently on a separate node. This distributed approach allows us to efficiently handle the large volume of data while ensuring consistent reformatting across the entire dataset.
+
+
+% TODO: In the future, provide a link to the processing scripts.
 
 \begin{absolutelynopagebreak}
 \subsection{Evaluation}
@@ -351,12 +300,83 @@ To ensure reproducibility of our benchmarking results, we integrate MultiMeditro
 
 To evaluate the performance of MultiMeditron, we use the following benchmarks:
 \begin{itemize}
-    \item \textbf{GMAI-MMBench}: A multimodal medical MCQ proposed in \cite{chen2024gmaimmbenchcomprehensivemultimodalevaluation} that covers 38 medical image modalities, 18 clinical-related tasks, 18 departments, and 4 perceptual granularities in a Visual Question Answering (VQA) format. We use the official test split for evaluation.
-    \item \textbf{SLAKE}: A multimodal medical benchmark proposed in \cite{liu2021slakesemanticallylabeledknowledgeenhanceddataset} that comprises open-ended questions and Y/N questions. This benchmark focuses on a variety of body parts and richer modalities.
-    \item \textbf{PathVQA}: A multimodal medical benchmark proposed in \cite{he2020pathvqa30000questionsmedical} with open-ended questions and Y/N questions. This benchmark has been manually verified by medical experts to ensure the correctness of the questions and answers.
+    \item \textbf{GMAI-MMBench}: A multimodal medical MCQ proposed in \cite{chen2024gmaimmbenchcomprehensivemultimodalevaluation} that covers 38 medical image modalities, 18 clinical-related tasks, 18 departments, and 4 perceptual granularities in a Visual Question Answering (VQA) format. We use the official validation split for evaluation containing 4,550 questions.
+    \item \textbf{PathVQA}: A multimodal medical benchmark proposed in \cite{he2020pathvqa30000questionsmedical} with open-ended questions and Y/N questions. This benchmark has been manually verified by medical experts to ensure the correctness of the questions and answers. We use the official two-part test for assessment, which contains 6,719 questions, including 3,362 yes/no questions.
+    \item \textbf{SLAKE}: A multimodal medical benchmark proposed in \cite{liu2021slakesemanticallylabeledknowledgeenhanceddataset} that comprises open-ended questions and Y/N questions. This benchmark focuses on a variety of body parts and richer modalities. We use the official test split for assessment, which contains 2094 questions, including 175 yes/no questions.
 \end{itemize}
 \end{absolutelynopagebreak}
 
-For each benchmark, we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets.
 
-Although to evaluate open-ended questions, we use exact string matching to compute accuracy, we acknowledge that this method may not fully capture the correctness of the answers due to potential variations in phrasing. In future work, we plan to integrate more sophisticated evaluation metrics, such as LLM-as-a-judge to better assess the quality of open-ended responses.
+\subsection{Loglikelihood evaluation}
+
+We evaluate a MultiMeditron by computing the conditional likelihood of a predefined answer (e.g., a multiple-choice option) given a multimodal prompt consisting of text and images.
+
+Rather than sampling or free-form generation, we perform teacher-forced evaluation:
+\begin{itemize}
+    \item The model is conditioned on the full input sequence (prompt + image).
+    \item The log-likelihood of the candidate answer tokens is computed using the model's logits
+    \item Out of a set of options, we consider that the model answer option $y$ if the negative log likelihood
+\end{itemize}
+
+This approach allows us to assign a scalar score to each candidate answer (negative log-likelihood).
+More formally, let:
+
+\begin{itemize}
+    \item $x = (x^{\text{text}}, x^{\text{img}})$ be the multimodal input, consisting of:
+        \begin{itemize}
+            \item textual context $x^{\text{text}}$
+            \item a set of images $x^{\text{img}} = { I_1, \dots, I_K }$
+        \end{itemize}
+    \item $y = (y_1, \dots, y_T)$ be a candidate answer token sequence.
+    \item $z_t = (z_{t,1}, \dots, z_{t,V})$ be the logits where $z_t$ are the logits for output token $t \in [1, T]$ and $V$ is the size of the vocabulary
+\end{itemize}
+
+The model is an autoregressive multimodal language model parameterized by $\theta$, which defines a conditional token distribution:
+
+\begin{equation*}
+    p_\theta(y_t \mid x, y_{<t}) = \text{softmax}(z_t)_{y_t}
+\end{equation*}
+
+The probability distribution of the full answer $y$ conditioned on the prompt $x$ is therefore given by:
+
+\begin{equation*}
+    p_\theta(y \mid x) = \prod_{t=1}^{T} p_\theta(y_t \mid x, y_{<t})
+\end{equation*}
+
+For MCQ bencmarks such as GMAI-MMBench or yes/no questions, for a given question $q$ and options $o_k$, we compute $p_\theta(o_k \mid q)$ and mark $o_k$ as the answer given by the model for the highest corresponding conditionnal probability:
+
+\begin{equation*}
+    \text{Model}(q) = \arg \max_{o_k} p_\theta(o_k \mid q)
+\end{equation*}
+
+Then, we report the accuracy of the model for all questions in our benchmark.
+
+\subsection{Exact match evaluation}
+
+
+In exact match evaluation, we let the model generate a full answer with or without a chain of thoughts with a temperature at 0 to disable randomness. Then we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets. The accuracy is then reported for each model and each benchmark.
+
+For example, we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets. The accuracy is then reported for each model and each benchmark.
+
+\begin{table}
+    \centering
+    \begin{tabular}{c m{38em}}
+        \toprule
+        \textbf{Benchmark} & \textbf{Prompt template} \\
+        \midrule
+        GMAI & <IMAGE> + <QUESTION> + Let's think step by step. Detail your reasoning before answering carefully. Your final answer should have the following format: Answer: <letter>. The <letter> is chosen amongst the possible options (A, B, C, D or E) \\
+        \midrule
+        PathVQA & <IMAGE> + <QUESTION> + Answer with a single short word or phrase only (no punctuation, no explanation). If the answer is affirmative, reply 'Yes'; if negative, reply 'No'. \\
+        \midrule
+        SLAKE & <IMAGE> + <QUESTION> + Answer with a single word or short phrase only. If the question lists options (e.g., “lung, liver or heart”), choose exactly one of the listed options and output that word alone. For yes/no questions, answer only “Yes” or “No”. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Zero-shot prompts for VQA evaluations. GMAI uses a CoT prompting while PathVQA and SLAKE instruct the model to give a short answer.}
+    \label{tab:prompt_templates}
+\end{table}
+
+In Table \ref{tab:prompt_templates}, we present the prompt templates for each benchmark. The templates include a placeholder for the image, the question, and the expected answer format.
+
+The GMAI templates encourage the model to produce a chain of thought (CoT) and to explicitly detail the reasoning behind each step. In contrast, the prompts used for SLAKE and PathVQA request short answers without accompanying explanations. While CoT improves performance on closed-ended questions, we observe degraded performance on open-ended benchmarks such as SLAKE and PathVQA. This degradation is primarily due to the difficulty of matching free-form explanations to exact answers using regular expressions and accounting for synonymous expressions.
+
+To address this issue, we remove the CoT prompting and instruct the model to produce answers that are as concise as possible. The revised prompt templates for SLAKE and PathVQA adopt a question-answering format, requiring the model to output a single word or short phrase corresponding to the correct answer.

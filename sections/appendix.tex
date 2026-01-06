@@ -5,7 +5,9 @@
 % \section{Additional results}
 %
 % Present supporting analyses and figures that complement your main results. Include any results referenced but not shown in the main text.
-\section{Architecture of the MultiMeditron framework}
+\section{Supplementary methods}
+
+\subsection{Architecture philosophy}
 
 In this part, we discuss the engineering philosophy behind the MultiMeditron framework and provide a detailed description of its architecture. As stated before, MultiMeditron is designed to be a modular and extensible framework for multi-modal learning. The core idea is to separate the different components of the training procedure into distinct modules that can be easily swapped or modified without affecting the overall structure of the framework.
 
@@ -30,7 +32,7 @@ In this part, we discuss the engineering philosophy behind the MultiMeditron fra
         \node[tokenizer, below=3.5cm of a] (tokenizer) {Tokenizer};
 
         \node[modality_embedder, below=3.0cm of modality_preprocessor] (modality_embedder) {Modality Embedder};
-
+        \node[modality_embedder, below=5.0cm of dataset] (lm_embeddings) {LM Embedder};
 
         \node[tokenizer, below=3.0cm of tokenizer] (interleaver) {Token Interleaver};
         \node[llm, below=1.0cm of interleaver] (llm) {LLM};
@@ -42,8 +44,9 @@ In this part, we discuss the engineering philosophy behind the MultiMeditron fra
         \draw[arrow] (modality_loader) -- (modality_loader.south |- modality_preprocessor.north) node[midway, right] {\small{\textit{Unified modality format}}};
         \draw[arrow] (modality_preprocessor) -- (modality_preprocessor.south |- tokenizer.north) node[midway, right] {\small{\textit{Preprocessed modality}}};
         \draw[arrow] (modality_embedder) -- (modality_embedder.south |- interleaver.north) node[midway, right] {\small{\textit{Modality embeddings}}};
-        \draw[arrow] (dataset.south |- tokenizer.south) -- (dataset.south |- interleaver.north) node[midway, left] {\small{\textit{Text tokens IDs}}};
         \draw[arrow] (modality_preprocessor.south |- tokenizer.south) -- (modality_embedder) node[midway, right] {\small{\textit{Preprocessed modality}}};
+        \draw[arrow] (lm_embeddings) -- (lm_embeddings.south |- interleaver.north) node[midway, left] {\small{\textit{Text embeddings}}};
+        \draw[arrow] (dataset.south |- tokenizer.south) -- (lm_embeddings) node[midway, left] {\small{\textit{Text token IDs}}};
         \draw[arrow] (interleaver) -- (llm) node[midway, right] {\small{\textit{Interleaved embeddings}}};
 
     \end{tikzpicture}
@@ -55,10 +58,10 @@ In Figure \ref{fig:multimeditron_modules_architecture}, we present the architect
 \begin{itemize}
     \item \textbf{Modality Loader}: This module is responsible for loading the raw data from various modalities (e.g., images, text, audio) and converting them into a unified format that can be processed by the subsequent modules. For instance, images are converted to PIL Image objects.
     \item \textbf{Modality Preprocessor}: This module takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding. This module depends on the modality embedder being used.
-    \item \textbf{Tokenizer}: This module is responsible for converting text data into token IDs that can be processed by the LLM, and allocating space for modality embeddings. We describe the tokenizer in more detail in Section \ref{sec:tokenizer}.
+    \item \textbf{Tokenizer}: This module is responsible for converting text data into token IDs that can be processed by the LLM, and allocating space for modality embeddings by expanding the token IDs with a number of placeholder tokens equal to the amount of modality embeddings. Notice that the tokenizer also takes as input the preprocessed modalities because it needs to allocate the right amound of placeholders in the token IDs. Nonetheless, this tokenizer does not modify on the preprocessed modalities and simply forwards them.
     \item \textbf{Modality Embedder}: This module uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
     \item \textbf{Token Interleaver}: This module convers the text token IDs into embeddings. Then, it combines the text embeddings and modality embeddings into a single sequence that can be processed by the LLM.
-    \item \textbf{LLM (Large Language Model)}: This module integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
+    \item \textbf{LLM}: This module integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
 \end{itemize}
 
 \subsection{Modality data flow}
@@ -152,17 +155,21 @@ In Figure \ref{fig:multimeditron_modules_architecture}, we present the architect
     \label{fig:modality_data_flow}
 \end{figure}
 
-In \ref{fig:modality_data_flow}, we illustrate the data flow for a generic modality as well as a specific example for image data. The data flow consists of four main components:
+In Figure \ref{fig:modality_data_flow}, we illustrate the data flow for a generic modality as well as a specific example for image data. The data flow consists of four main components:
 \begin{itemize}
     \item \textbf{Modality Loader}: This component is responsible for loading the raw data from various formats (e.g., file paths, byte streams) and converting them into a unified format that can be processed by the subsequent components.
     \item \textbf{Modality Preprocessor}: This component takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding.
     \item \textbf{Modality Embedder}: This component uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
-    \item \textbf{LLM (Large Language Model)}: This component integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
+    \item \textbf{LLM}: This component integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
 \end{itemize}
 
-\subsection{Tokenizer}
-\label{sec:tokenizer}
 
-The tokenizer in the MultiMeditron framework is a crucial component that bridges the gap between text data and modality embeddings. Its primary function is to convert text data into token IDs that can be processed by the LLM, while also allocating space for modality embeddings within the token sequence.
+\section{Additional results}
+
+\subsection{Training with a Reasoning Language Model}
+
+In order to integrate the latest language models in MultiMeditron, we tried to use a reasoning model as our language model. Specifically, we trained with Qwen3-8B as our base LLM with the same data and hyperparameters as presented in \ref{sec:training}.
+
+We compare inference results between Qwen-4B-Instruct, Llama3.1-8B and Qwen3-8B
 
 
