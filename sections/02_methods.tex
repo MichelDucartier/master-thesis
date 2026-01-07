@@ -47,7 +47,7 @@ Each expert takes the image as input and outputs an embedding of the image. The 
 We explore four strategies for combining the embeddings illustrated in Figure \ref{fig:expert_fusion}:
 
 \begin{itemize}
-    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. We then perform a weighted average on the projected embeddings using the weights produced by the gating network to obtain the final embeddind.
+    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. We then perform a weighted average on the projected embeddings using the weights produced by the gating network to obtain the final embedding.
     \item \textbf{AVG-SHARED} (Average and Shared-Projection): A single shared projection layer is used for all experts. The embeddings from each expert are averaged first, and then the averaged embedding is projected into the LLM token space.
     \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert. Every expert specialist embeddings are weighted using the gating network before feeding them into the attention layer.
     \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
