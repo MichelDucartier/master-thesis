@@ -8,6 +8,7 @@
 \section{Supplementary methods}
 
 \subsection{Architecture philosophy}
+\label{sec:architecture_philosophy}
 
 In this part, we discuss the engineering philosophy behind the MultiMeditron framework and provide a detailed description of its architecture. As stated before, MultiMeditron is designed to be a modular and extensible framework for multi-modal learning. The core idea is to separate the different components of the training procedure into distinct modules that can be easily swapped or modified without affecting the overall structure of the framework.
 
@@ -19,8 +20,8 @@ In this part, we discuss the engineering philosophy behind the MultiMeditron fra
         \tikzstyle{data} = [rectangle, draw, minimum width=3cm, minimum height=1cm, text centered]
         \tikzstyle{module} = [rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered]
         \tikzstyle{tokenizer} = [rectangle, draw, rounded corners, minimum width=9cm, minimum height=1cm, text centered]
-        \tikzstyle{modality_embedder} = [rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered, fill=blue!20]
-        \tikzstyle{llm} = [rectangle, draw, rounded corners, minimum width=9cm, minimum height=1cm, text centered, fill=blue!20]
+        \tikzstyle{modality_embedder} = [rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, text centered, fill=multimeditron-primary]
+        \tikzstyle{llm} = [rectangle, draw, rounded corners, minimum width=9cm, minimum height=1cm, text centered, fill=multimeditron-primary]
         \tikzstyle{arrow} = [thick,->,>=stealth]
 
         % Nodes
@@ -50,7 +51,7 @@ In this part, we discuss the engineering philosophy behind the MultiMeditron fra
         \draw[arrow] (interleaver) -- (llm) node[midway, right] {\small{\textit{Interleaved embeddings}}};
 
     \end{tikzpicture}
-    \caption{Architecture of the MultiMeditron framework showing the modular components and their interactions. In blue are highlighted the components that are trainable}
+    \caption{Architecture of the MultiMeditron framework showing the modular components and their interactions. In yellow are highlighted the components that are trainable}
     \label{fig:multimeditron_modules_architecture}
 \end{figure}
 
@@ -58,13 +59,14 @@ In Figure \ref{fig:multimeditron_modules_architecture}, we present the architect
 \begin{itemize}
     \item \textbf{Modality Loader}: This module is responsible for loading the raw data from various modalities (e.g., images, text, audio) and converting them into a unified format that can be processed by the subsequent modules. For instance, images are converted to PIL Image objects.
     \item \textbf{Modality Preprocessor}: This module takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding. This module depends on the modality embedder being used.
-    \item \textbf{Tokenizer}: This module is responsible for converting text data into token IDs that can be processed by the LLM, and allocating space for modality embeddings by expanding the token IDs with a number of placeholder tokens equal to the amount of modality embeddings. Notice that the tokenizer also takes as input the preprocessed modalities because it needs to allocate the right amound of placeholders in the token IDs. Nonetheless, this tokenizer does not modify on the preprocessed modalities and simply forwards them.
+    \item \textbf{Tokenizer}: This module is responsible for converting text data into token IDs that can be processed by the LLM, and allocating space for modality embeddings by expanding the token IDs with a number of placeholder tokens equal to the amount of modality embeddings. Notice that the tokenizer also takes as input the preprocessed modalities because it needs to allocate the right amount of placeholders in the token IDs. Nonetheless, this tokenizer does not modify on the preprocessed modalities and simply forwards them.
     \item \textbf{Modality Embedder}: This module uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
     \item \textbf{Token Interleaver}: This module convers the text token IDs into embeddings. Then, it combines the text embeddings and modality embeddings into a single sequence that can be processed by the LLM.
-    \item \textbf{LLM}: This module integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
+    \item \textbf{LLM}: The language model takes the interleaved text embeddings with the projected text embeddings to generate text.
 \end{itemize}
 
 \subsection{Modality data flow}
+\label{sec:add_modality}
 
 \begin{figure}[h]
     \centering
@@ -155,21 +157,343 @@ In Figure \ref{fig:multimeditron_modules_architecture}, we present the architect
     \label{fig:modality_data_flow}
 \end{figure}
 
-In Figure \ref{fig:modality_data_flow}, we illustrate the data flow for a generic modality as well as a specific example for image data. The data flow consists of four main components:
-\begin{itemize}
-    \item \textbf{Modality Loader}: This component is responsible for loading the raw data from various formats (e.g., file paths, byte streams) and converting them into a unified format that can be processed by the subsequent components.
-    \item \textbf{Modality Preprocessor}: This component takes the unified format from the loader and applies necessary preprocessing steps (e.g., resizing, normalization) to prepare the data for embedding.
-    \item \textbf{Modality Embedder}: This component uses a pre-trained model (e.g., CLIP for images) to convert the preprocessed data into a tensor representation that can be fed into the LLM.
-    \item \textbf{LLM}: This component integrates the modality embeddings with text data to perform downstream tasks such as classification or generation.
-\end{itemize}
+This appendix details the architectural requirements and implementation steps for extending the MultiMeditron framework with new data modalities (e.g., audio, thermal imaging, or structured sensor data).
 
+\subsubsection{Modality Processing Pipeline}
+The system processes raw data into LLM-compatible embeddings through a three-stage pipeline. Understanding the distinction between model-agnostic and model-dependent steps is critical for implementation.
+
+\begin{enumerate}
+    \item \textbf{Modality Loading:} Extracts raw data from the dataset (e.g., raw bytes) and transforms it into a standard Python object (e.g., a PIL Image). This step is \textit{model-agnostic}.
+    \item \textbf{Modality Preprocessing:} Transforms the raw object into a \texttt{torch.Tensor}. This occurs during the data collation phase.
+    \item \textbf{Modality Embedding:} The GPU-accelerated forward pass where the tensor is passed through an embedder and projected into the LLM's hidden dimension.
+\end{enumerate}
+
+\subsubsection{Implementation Components}
+To integrate a new modality, four primary classes must be implemented or extended within the \texttt{src/multimeditron/model/modalities} directory.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{llp{9cm}}
+        \hline
+        \textbf{Component} & \textbf{Base Class} & \textbf{Responsibility} \\ \hline
+        Loader & \texttt{BaseModalityLoader} & Logic for reading raw bytes/files from the dataset. \\
+        Config & \texttt{BaseModalityConfig} & Stores hyperparameters (e.g., \texttt{clip\_name}, \texttt{hidden\_size}). \\
+        Processor & \texttt{BaseModalityProcessor} & CPU-bound transformations and tensorization. \\
+        Model & \texttt{BaseModality} & GPU-bound forward pass and projection layers. \\
+        \hline
+    \end{tabular}
+    \caption{Required classes for modality integration.}
+\end{table}
+
+\begin{absolutelynopagebreak}
+\subsubsection{Code Templates}
+
+\paragraph{Modality Loader}
+The loader must be registered with the \texttt{AutoModalityLoader} factory to allow dynamic instantiation during training.
+\begin{lstlisting}[language=Python, caption=Example Image Loader Implementation]
+@AutoModalityLoader.register("raw-image")
+class RawImageLoader(BaseModalityLoader):
+    def load(self, sample: Dict[str, Any]) -> PIL.Image.Image:
+        # 'sample' contains the 'value' key from the dataset
+        image_bytes = sample[MODALITY_VALUE_KEY]["bytes"]
+        return PIL.Image.open(io.BytesIO(image_bytes)).convert("RGB")
+\end{lstlisting}
+
+\end{absolutelynopagebreak}
+
+\paragraph{Modality Preprocessor} The modality preprocessor transforms raw modality into a \texttt{torch.Tensor}. For instance, this process often involves cropping, resizing and normalization for images.
+
+\begin{lstlisting}[language=Python, caption=Example Image Preprocessor Implementation]
+class ImageProcessor(BaseModalityProcessor):
+    def process(self, modality: Dict[str, Any]) -> Dict[str, Any]:
+        processed_modality = modality.copy()
+        image = modality[MODALITY_VALUE_KEY]
+
+        processed_modality[MODALITY_VALUE_KEY] = self.image_processor(images=image, return_tensors="pt")["pixel_values"][0]
+        processed_modality[NUM_EMBEDDINGS_KEY] = self._num_patches_per_entry
+
+        return processed_modality
+\end{lstlisting}
+
+
+
+\paragraph{The Modality Model and Projector}
+The modality model acts as a bridge. It typically consists of a frozen or trainable \textit{Vision Tower} (or equivalent) and a \textit{Projector} that aligns the modality's features with the LLM's token space.
+
+\begin{lstlisting}[language=Python, caption=Modality Model Forward Logic]
+@AutoModality.register("meditron_clip")
+class ImageModality(BaseModality):
+    def forward(self, inputs: List[torch.Tensor]) -> torch.FloatTensor:
+        # 1. Stack and move to device
+        x = torch.stack(inputs, dim=0).to(self.feature_extractor.device)
+
+        # 2. Extract features from backbone
+        features = self.feature_extractor.vision_model(x).last_hidden_state
+
+        # 3. Project to LLM hidden dimension (e.g., 4096)
+        return self.projector(features[:, 1:, :])
+\end{lstlisting}
+
+\subsubsection{Freezing and Optimization}
+To support multi-stage training (e.g., pre-training the projector before fine-tuning the backbone), the \texttt{BaseModality} implementation must explicitly define \texttt{freeze\_modality\_embedder()} and \texttt{unfreeze\_projection()} methods. This ensures the trainer can toggle gradients for specific modules during different phases of the training curriculum.
 
 \section{Additional results}
 
-\subsection{Training with a Reasoning Language Model}
+\subsection{Visual Alignment a Reasoning Language Model}
+\label{sec:reasoning_alignment}
 
-In order to integrate the latest language models in MultiMeditron, we tried to use a reasoning model as our language model. Specifically, we trained with Qwen3-8B as our base LLM with the same data and hyperparameters as presented in \ref{sec:training}.
+We attempt to leverage the power of reasoning models in MultiMeditron by training a MultiMeditron model with a generalist CLIP model and Qwen3-8B. After the alignment phase, we manually compare the performance of MultiMeditron LLaMA3.1-8B CLIP and MultiMeditron Qwen3-8B CLIP at inference when captioning images. Qwen3-8B provides a special token to disable reasoning, we activate this capability to stop Qwen3 from reasoning. Both models have been trained during the alignment phase using the same hyperparameters and data. We show the results in Figure \ref{fig:sidebyside_boxes}.
 
-We compare inference results between Qwen-4B-Instruct, Llama3.1-8B and Qwen3-8B
+\begin{figure}[t]
+    \centering
+
+    \begin{tcolorbox}[colback=blue!5, title=Prompt, width=0.3\textwidth, fonttitle=\bfseries]
+        \centering
+        \includegraphics[width=0.8\textwidth]{images/infarcto_cerebral.jpg} \\
+        \small
+        Describe the image
+    \end{tcolorbox}
+
+
+    \vspace{2mm}
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe=qwen-primary,
+            title=\centering MultiMeditron Qwen3-8B CLIP \\(after alignment),
+            fonttitle=\bfseries,
+            ]
+            \justifying
+            \small
+            The image features a vintage-style poster for the movie "The Fugitive" starring Harrison Ford. The poster is framed in a classic black border, with a central image of Ford in a dramatic pose. The background is a dark, mysterious setting, possibly a forest or a remote location, enhancing the suspenseful tone of the film. The text "The Fugitive" is prominently displayed in a bold, stylized font, with additional details like the release year and a tagline. The overall design evokes a retro aesthetic, typical of 1990s movie posters.
+        \end{tcolorbox}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe=llama-primary,
+            title=\centering MultiMeditron LLaMA3.1-8B CLIP \\(after alignment),
+            fonttitle=\bfseries,
+            % breakable
+            ]
+            \justifying
+            \small
+            The image shows a detailed microscopic view of a human brain, specifically focusing on the cerebral cortex. The cortex is depicted in a vibrant, pinkish-red color, with a textured appearance that suggests the intricate layers of neurons and their connections. The image is highly magnified, allowing for a clear observation of the brain's structure, including the visible neurons and their branching patterns. The overall effect is both fascinating and educational, offering a unique glimpse into the complex architecture of the human brain.
+        \end{tcolorbox}
+    \end{minipage}
+
+    \caption{Side-by-side qualitative comparison of MultiMeditron LLaMA3.1-8B CLIP and MultiMeditron Qwen3-8B CLIPmodels with temperature 0 on a cerebral infarcto image.}
+    \label{fig:sidebyside_boxes}
+\end{figure}
+
+Even though the compared models have only been trained during the alignment phase, we can already notice a difference between the answer from the reasoning and the instruct model. Indeed, MultiMeditron Qwen3-8B CLIP's caption is completely out of topic compared to MultiMeditron LLaMA3.1-8B CLIP suggesting that the modality embeddings for LLaMA3.1 are better aligned with the text embeddings compared to its reasoning Qwen3 counterpart.
+
+This misalignment could be explained by the fact that Qwen3-8B is a reasoning model and its text embeddings might not fully reflect the meaning of the text. This could come from the misalignment between the contrastive learning objective from CLIP and the GRPO from Qwen3-8B as tokens serve two different purpose in both cases. In contrastive learning, image tokens must reflect the meaning of the image whereas in GRPO, text tokens are produced to lead to the answer with the highest reward. Nonetheless, this question requires further research on interpretability to confirm or reject this hypothesis.
+
+\subsection{Performance of MultiMeditron models on generalist benchmarks}
+
+\begin{table}[tbp]
+    \centering
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabular}{l|c|c}
+        \hline
+        \textbf{Model name}                    & \textbf{MUIRBENCH}   & \textbf{RealWorldQA} \\
+        \hline
+        MedGemma 4B                            & 27.4                 & 44.7                                     \\
+        Molmo2-O-7B                            & 51.2                 & 73.3                                     \\
+        MultiMeditron Qwen3-4B BiomedCLIP      & 23.4                 & 42.4                                     \\
+        MultiMeditron Apertus-8B BiomedCLIP    & 23.2                 & 41.7                                     \\
+        MultiMeditron LLaMA3.1-8B BiomedCLIP   & 20.9                 & 42.2                                     \\
+        MultiMeditron LLaMA3.1-8B CLIP         & 23.8                 & 45.8                                     \\
+        MultiMeditron LLaMA3.1-8B ATTN-PEP    & 19.2                  & 37.1                                     \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED & 18.8                  & 43                                       \\
+        MultiMeditron LLaMA3.1-8B AVG-PEP     & 17.7                  & 41.1                                     \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED & 17.5                  & 41.8 \\
+        \hline
+    \end{tabular}
+    \caption{Exact match accuracy on generalist benchmarks for MultiMeditron and other multimodal models}
+    \label{tab:generalit_results}
+\end{table}
+
+In this section, we evaluate the performance of MultiMeditron compared to MedGemma and Molmo2. Specifically, we are interested in multiple image reasoning and tasks that are out of the medical domain.
+To achieve this, we use the following benchmarks:
+
+\begin{itemize}
+    \item \textbf{MUIRBENCH} \cite{wang2024muirbenchcomprehensivebenchmarkrobust}. MUIRBENCH is a benchmark that focuses on robust multi-image understanding capabilities of multimodal LLMs. It comprises 2,600 multiple-choice questions with 11,264 images.
+    \item \textbf{RealWorldQA} \cite{xai_grok15v_2024}: RealWorldQA is a benchmark that targets real-world applications of multimodal models. Specifically it focuses on spatial understanding drawn from real-world scenarios including photos captured from vehicles. This benchmark features 765 multiple-choice questions.
+\end{itemize}
+
+We report in Table \ref{tab:generalit_results} the results on both benchmarks. As expected, medically finetuned models perform worse than generalist models. Although MedGemma achieves SOTA on medical benchmarks for its parameter size, it underachieves on real-world questions: 27.4\% on MUIRBENCH, and 44.7\% on RealWorldQA which is worse than MultiMeditron LLaMA3.1-8B CLIP (45.8\%).
+
+\begin{absolutelynopagebreak}
+    Generalist models like Molmo2-O-7B and Perception-LM 8B perform significantly better than the other models, those generalist models achieve:
+    \begin{itemize}
+        \item $\approx 50\%$ compared to $\approx 20$-$30\%$ for medically-tuned models on MUIRBENCH,
+        \item $\approx 70\%$ compared to $\approx 40$-$50\%$ on RealWorldQA.
+    \end{itemize}
+    This highlights the potential harmfulness of using those medically models on images that are out of distribution.
+\end{absolutelynopagebreak}
+
+Furthermore, we also notice that MultiMeditron LLaMA3.1-8B CLIP performs significantly better than the other MultiMeditron model as expected. This contrasts with the results that we obtained in Table \ref{tab:end2end_eval} where the BiomedCLIP versions outperformed the other MultiMeditron models. This may be due to the fact that the CLIP embedder produced better embeddings for those benchmarks compared to BiomedCLIP and our modality-driven approach, which resulted in a better accuracy overall for both generalist benchmarks
+
+\subsection{Examples of MultiMeditron answers on different images}
+
+We provide some examples of MultiMeditron inference against other multimodal models. In Figure \ref{fig:radiopaedia_pneumoperitoneum}, we show the answer of MultiMeditron Qwen3-4B BiomedCLIP against Molmo2-O-7B. We see a clear difference in the answer formatting, MultiMeditron outputs a readable bullet point while Molmo2-O-7B is non-formatted paragraph. In the content, Molmo2-O-7B doesn't detect any abnormalities in the image while MultiMeditron detects a radioluscent region in the lungs although the position of this region of interest is incorrect. MultiMeditron positions the radioluscent area in the upper left lung while the Radiopaedia caption indicates that the radioluscent area is positioned under the diaphragm across the abdomen. This highlights the need for better spatial understanding through improved visual embedder and spatial understanding datasets.
+
+While the results are promising, MultiMeditron still exhibits hallucinations on certain prompts. For instance, in Figure \ref{fig:broken_arm}, the model LLaMA3.1-8B ATTN-PEP misidentifies an X-ray of the right forearm as a sagittal X-ray of the lower leg or chest Xray.
+On the other hand, the Apertus version demonstrates a better ability to identify the modality and anatomical region of interest. However, it fails to detect the radial fracture in the X-ray, despite its improved performance in recognizing anatomical structures. Both models underscore the critical need for a diverse and well-represented anatomical region of interest in training datasets to enhance accuracy and robustness in medical image classification tasks.
+
+\begin{figure}[t]
+    \centering
+    \begin{tcolorbox}[colback=blue!5, title=Prompt, width=0.45\textwidth, fonttitle=\bfseries]
+        \includegraphics[width=0.4\textwidth]{images/pneumoperitoneum.jpg} \\
+        \small
+        \centering
+        You are a radiologist expert. Describe the image
+    \end{tcolorbox}
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe=qwen-primary,
+            title=\centering MultiMeditron Qwen3-4B BiomedCLIP,
+            fonttitle=\bfseries,
+            ]
+            \small
+            \justifying
+            The chest X-ray displays the thoracic cavity, including the lungs, heart, and bony structures of the chest wall.
+            \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+                \item The \textbf{lungs} are the primary structures visible, with the \textbf{heart} centrally positioned between them.
+                \item A region of interest is identified in the \textbf{upper left lung}, characterized by an area of \textbf{increased opacity}.
+                    \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+                        \item This opacity appears denser than the surrounding lung tissue, which is typically more radiolucent.
+                        \item The increased density suggests a possible \textbf{pathological process}, such as:
+                            \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+                                \item Infection (e.g., pneumonia)
+                                \item Inflammation
+                                \item Other lung abnormalities
+                            \end{itemize}
+                    \end{itemize}
+            \end{itemize}
+            The abnormality is localized to the upper left lung and may indicate a focal disease process. Its proximity to adjacent lung tissue raises the possibility of local spread or involvement of nearby areas. Further clinical correlation and imaging may be needed to determine the exact cause.
+        \end{tcolorbox}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe= molmo-primary,
+            title=\centering Molmo2-O-7B,
+            fonttitle=\bfseries,
+            ]
+            \justifying
+            \small
+            This chest x-ray displays a clear view of the thoracic cavity. The ribcage is prominently visible, with the sternum and clavicles also in view. The lungs appear as dark areas on either side of the ribcage, while the spine is clearly outlined in the center. The image is in black and white, which is typical for x-rays. There are no visible abnormalities or pathologies in this image. The x-ray is well-lit and of good quality, providing a clear view of the skeletal structure.
+        \end{tcolorbox}
+    \end{minipage}
+
+    \vspace{3mm}
+
+    \begin{tcolorbox}[
+        colback=blue!5,
+        colframe=black,
+        title=\centering Radiopaedia caption,
+        fonttitle=\bfseries,
+        ]
+        \justifying
+        \small
+        Radiolucent area noted below the diaphragm across the abdomen. This is gas under the diaphragm \\
+        \textbf{Case Discussion}: This is a case of pneumoperitoneum post laparoscopy, which can be a "normal" (i.e. expected) finding if the volume of gas is appropriate.
+        Normally on a chest xray two hemidiaphragms are demonstrated but in cases of a pneumoperitoneum the entire continuity can be seen.
+    \end{tcolorbox}
+
+    \caption{Comparison of MultiMeditron Qwen3-4B BiomedCLIP and Molmo2-O-7B on an image of a case of pneumoperitoneum. Both inference have been generated with temperature 0 \cite{radiopaedia_pneumoperitoneum}}
+    \label{fig:radiopaedia_pneumoperitoneum}
+\end{figure}
+
+
+\begin{figure}[t]
+    \centering
+    \begin{tcolorbox}[colback=blue!5, title=Prompt, width=0.45\textwidth, fonttitle=\bfseries]
+        \centering
+        \includegraphics[width=0.4\textwidth]{images/broken_arm.jpg} \\
+        \small
+        You are a radiologist expert. Describe the image
+    \end{tcolorbox}
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe=llama-primary,
+            title=\centering MultiMeditron LLaMA3.1-8B ATTN-PEP,
+            fonttitle=\bfseries,
+            ]
+            \small
+            \justifying
+            The image is a sagittal section of a lateral chest X-ray, focusing on the lower portion of the body—likely the lower leg region.
+
+A region of interest is visible in the lower part of the image, corresponding to the distal femur. This area exhibits an abnormal texture or density compared to the surrounding bone tissue, suggesting a potential pathological change.
+
+Key observations:
+\begin{itemize}[nosep, wide=0pt, leftmargin=*]
+    \item The abnormality is localized to the distal femur.
+    \item The altered density or texture may indicate a bone lesion, such as a tumor, infection, or other structural abnormality.
+    \item The change appears to involve the bone itself, with possible effects on adjacent tissues.
+\end{itemize}
+
+This finding warrants further clinical evaluation to determine the underlying cause.
+        \end{tcolorbox}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.495\textwidth}\vspace{0pt}
+        \begin{tcolorbox}[
+            colback=blue!5,
+            colframe=apertus-primary,
+            title=\centering MultiMeditron Apertus-8B BiomedCLIP,
+            fonttitle=\bfseries,
+            ]
+            \justifying
+            \small
+            The image is a lateral X-ray of the right hand, focusing on the fourth and fifth metacarpal bones.
+
+            A region of interest is visible on the right side of the image, corresponding to the fourth metacarpal bone. This area exhibits an unusual appearance, characterized by:
+            \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+                \item A distinct texture
+                \item Possible differences in color or density compared to surrounding bone tissue
+            \end{itemize}
+
+            These features suggest a potential abnormality, such as:
+            \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+                \item A lesion
+                \item A pathological change in the bone structure
+            \end{itemize}
+
+            The abnormality may be related to or influenced by adjacent bone structures, indicating a possible localized bone condition. Further clinical evaluation is recommended to determine the nature of this finding.
+        \end{tcolorbox}
+    \end{minipage}
+
+    \vspace{3mm}
+
+    \begin{tcolorbox}[
+        colback=blue!5,
+        colframe=black,
+        title=\centering Radiopaedia caption,
+        fonttitle=\bfseries,
+        ]
+        \justifying
+        \small
+        There are oblique complete fractures of the right radial and ulnar mid diaphysis. There is one shaft width of ulnar and volar displacement of the radial fracture. There is one shaft width of ulnar and dorsal displacement of the ulnar fracture. There is mild overlap/foreshortening as well as dorsal angulation of both fractures. There is 90 degrees of rotation of both fractures - the elbow and wrist joints are oriented perpendicular to each other in this case.
+
+        In addition, the following rules are not met:
+        \begin{itemize}[nosep, wide=0pt, leftmargin=*]
+            \item the bicipital tuberosity and radial styloid should normally be 180 degrees apart on the AP view.
+            \item the ulnar styloid and coronoid should normally be 180 degrees apart on the lateral view.
+        \end{itemize}
+    \end{tcolorbox}
+
+    \caption{Comparison of MultiMeditron Qwen3-4B BiomedCLIP and Molmo2-O-7B on an image of a case of bone forearm fracture with rotation. Both inference have been generated with temperature 0 \cite{radiopaedia_fracture}}
+    \label{fig:broken_arm}
+\end{figure}
+
 
 

@@ -7,62 +7,52 @@ The field of Artificial Intelligence (AI) has witnessed transformative advanceme
 
 Despite these advancements, the broader adoption of multimodal AI in clinical applications is hindered by several challenges.
 
-Current open-source frameworks for multimodal AI research often lack flexibility and extensibility, making it difficult to customize and scale solutions for the unique requirements of clinical applications.
+Current open-source frameworks for multimodal AI research often lack flexibility and extensibility, making it difficult to customize and scale solutions for the requirements of clinical applications.
 Furthermore, the reproducibility of AI models in healthcare remains a persistent issue. The "Reproducibility Crisis," which has been widely discussed in AI since the mid-2010s, is characterized by the failure of many studies to provide openly accessible code, datasets, and experimental settings.
 In 2016, Nature published a survey revealing that more than 70\% of 1,576 researchers have tried and failed to reproduce another scientist's experiments and over 50\% failed to reproduce their own experiments \cite{naturereproducibility2016}.
 
 In the AI field, experts identified numerous gaps that explain the reproducibility crisis such as the access to the training and evaluation data, lack of code availability or errors, misspecification or under-specification of the model or training procedure \cite{pineau2020improvingreproducibilitymachinelearning}.
 This crisis undermines trust in AI research, limits collaborative efforts, and slows down the translation of breakthroughs into real-world applications.
 
-While open-source multimodal pipelines exist, they often only supports images and lack modularity for other modalities integration. As an example Llava and Perception-LM do not provide documentation nor Docker images for extensibility \cite{li2024llava} \cite{cho2025PerceptionLM}. In addition, SOTA open multimodal models such as MedGemma show that there is still room for improvement, achieving only 45\% accuracy on GMAI-MMBENCH \cite{sellergren2025medgemmatechnicalreport} (in-house testing).
+While open-source multimodal pipelines exist, they often only supports images and lack modularity for other modalities integration. As an example LLaVA and Perception-LM do not provide documentation nor Docker images for extensibility \cite{li2024llava} \cite{cho2025PerceptionLM}. In addition, SOTA open multimodal models such as MedGemma show that there is still room for improvement, achieving only 45\% accuracy on popular multimodal medical benchmarks such as GMAI-MMBENCH \cite{sellergren2025medgemmatechnicalreport} (in-house testing).
 
-In this context, we introduce \textbf{MultiMeditron}. MultiMeditron is a multimodal pipeline that is modular and designed to be easily extended to any modalities, providing Docker images and clear documentation for reproducibility and collaborative efforts. We also provide a suite of multimodal models with different types of architecture targeted to improve the performance of multimodal models in the medical setting.
+In this context, we introduce \textbf{MultiMeditron}. MultiMeditron is a multimodal pipeline that is modular and designed to be easily extended to any modalities, providing clear documentation for reproducibility and collaborative efforts as well as open licensed datasets. We also provide a suite of multimodal models with different types of architecture targeted to improve the performance of multimodal models in the medical setting.
 
 \subsection{Literature review}
 
 When designing multimodal models, different fusion strategies can be employed to combine information from various modalities. In late fusion, each modality is processed separately by its own encoder and combined only at the end such as CLIP models \cite{radford2021learningtransferablevisualmodels}. While those models are able to produce image embeddings that are aligned with text, they can not generate text or follow instructions, limiting their usability.
 
-To create generative models, early fusion involves integrating raw data from different modalities at the input level, allowing the model to learn joint representations from the outset \cite{chameleonteam2025chameleonmixedmodalearlyfusionfoundation} \cite{meta2025llama4}. While those models display impressive capabilities at multi-step reasoning and instruction following tasks, they require a large pretraining set to truly perform. Moreover, they lack modularity in the sense that one can not easily extend an existing model by adding a new modality as this requires a new pretraining.
+To create generative models, an early fusion approach has been proposed and involves integrating raw data from different modalities at the input level, allowing the model to learn joint representations from the outset \cite{chameleonteam2025chameleonmixedmodalearlyfusionfoundation} \cite{meta2025llama4}. While those models display impressive capabilities at multi-step reasoning and instruction following tasks, they require a large pretraining set to truly harness their full potential. Moreover, they lack modularity in the sense that one can not easily extend an existing model by adding a new modality as this requires a new pretraining from scratch.
 
-To combine both the embedding power of CLIP and the generative ability of LLMs, a novel intermediate fusion approach has been proposed \cite{liu2023visualinstructiontuning}. This architecture uses a CLIP model to project images into the LLM token embedding space, fuses those projected embeddings with text input embeddings, and uses the LLM to generate text. This allows for modularity and removes the need for a large pretraining set as it exploits the native capabilities of the CLIP and the LLM model.
+To combine both the embedding power of CLIP and the generative ability of LLMs, an intermediate fusion approach has been proposed \cite{liu2023visualinstructiontuning}. This architecture uses a CLIP model to project images into the LLM token embedding space, fuses those projected embeddings with text input embeddings, and uses the LLM to generate text. This allows for modularity and removes the need for a large pretraining set as it exploits the native capabilities of the CLIP and the LLM model.
 
-Many multimodal generative models have been created using both early and intermediate fusion approach. Nevertheless, there is no consensus on which architecture is best suited for multimodal tasks, as each has its own strengths and weaknesses. Recent advances in large multimodal models (LMMs) have demonstrated impressive abilities in pattern recognition, coherent text generation, and visual information processing \cite{openai2025gpt5} \cite{google2025gemini3}. However, their closed nature limits their use in healthcare, as sensitive data must be sent to these models.
+Many multimodal generative models have been created using both early and intermediate fusion approach. Nevertheless, there is no consensus on which architecture is best suited for multimodal tasks, as each has its own strengths and weaknesses. Recent advances in large multimodal models (LMMs) have demonstrated impressive abilities in pattern recognition, coherent text generation, and visual information processing \cite{openai2025gpt5} \cite{google2025gemini3}. However, their closed nature limits their use in healthcare, as potentially sensitive patient data must be sent to these models.
 
 % Talk about early vs intermediate vs late fusion
-Open-weights multimodal models are closing the gap with closed models, with models like Llava-Next \cite{liu2024llavanext}, Ministral \cite{mistral2025mistral3} and Qwen3-VL \cite{bai2025qwen3vltechnicalreport}. However, despite their strong general image-understanding capabilities, general-purpose (non–medically specialized) multimodal models still fall short in the nuanced medical reasoning and robust clinical interpretation required for medical data.
+Open-weights multimodal models are closing the gap with closed models, with models like LLaVA-Next \cite{liu2024llavanext}, Molmo2 \cite{ai2_molmo2_2025}, Ministral \cite{mistral2025mistral3}, Perception-LM \cite{cho2025PerceptionLM} and Qwen3-VL \cite{bai2025qwen3vltechnicalreport}. However, despite their strong general image-understanding capabilities, general-purpose (non–medically specialized) multimodal models still fall short in the nuanced medical reasoning and robust clinical interpretation required for medical data.
 
 Recognizing those gaps, the research community has developed specialized multimodal models for medical applications. Models such as Med-Flamingo \cite{moor2023medflamingomultimodalmedicalfewshot} and LLaVA-Med \cite{li2023llavamedtraininglargelanguageandvision} have been designed to handle medical images and text, demonstrating improved performance on clinical tasks compared to their general-purpose counterparts. More recently, MedGemma \cite{sellergren2025medgemmatechnicalreport} has pushed the boundaries further by showing strong results on various medical benchmarks, highlighting the potential of multimodal approaches in healthcare.
 
 While those advances are promising, existing multimodal medical models only achieve moderate accuracy on challenging benchmarks. For instance, MedGemma achieves only 45\% accuracy on GMAI-MMBENCH \cite{sellergren2025medgemmatechnicalreport} (in-house testing), indicating significant room for improvement. Furthermore, those models are often built on monolithic architectures that limit flexibility and their interpretability. To address these limitations, recent research has focused on developing more modular frameworks and experts-driven . For example, EAGLE \cite{shi2025eagleexploringdesignspace} introduces a modular architecture that allows for the integration of various modalities through expert-designed embedders leading to improved performance on diverse multimodal tasks.
 
-Taking inspiration from these advancements, we propose MultiMeditron, a modular multimodal pipeline specifically tailored for medical applications. A key innovation of MultiMeditron is its modality-driven modality embedder, which customizes embeddings based on the type of image received in input.
+Taking inspiration from these advancements, we propose MultiMeditron, a modular multimodal pipeline specifically tailored for medical applications. A key innovation of MultiMeditron is its modality-driven image embedder, which customizes embeddings based on the type of image received in input.
 
-TODO: Results
+We demonstrate that, despite being trained on only open-licensed medical data, the MultiMeditron suite of models achieves competitive results in multimodal medical benchmarks while also providing a modular research framework for multimodal training and evaluation. Although our modality-driven approach performs slightly worse than the standard approach, it still achieves reasonable results on those same benchmarks.
 
-
-\subsection{Research objectives} \label{sec:aim}
-
-% State your primary research aim in one clear, focused sentence. Follow this with specific objectives that break down how you will achieve this aim. Each objective should be:
-% \begin{enumerate}
-%     \item To systematically investigate [specific aspect] (addressed in Section \ref{sec:methods})
-%     \item To develop and implement [specific method] (addressed in Section \ref{sec:results1})
-%     \item To evaluate and validate [specific outcome] (addressed in Section \ref{sec:results2})
-%     \item To compare [specific comparison] (addressed in Section \ref{sec:results3})
-% \end{enumerate}
+\subsection{Research objectives}
+\label{sec:aim}
 
 We aim to develop a modular and extensible multimodal AI pipeline, MultiMeditron, that enhances the performance and reproducibility of medical multimodal models by integrating diverse data modalities through specialized embedders and architectures.
 To achieve this aim, we set the following specific objectives:
 \begin{enumerate}
     \item To design and implement a modular pipeline that allows for easy integration of various data modalities (addressed in Section \ref{sec:methods}).
-    \item To develop specialized modality embedders that optimize the representation of different medical data types (addressed in Section \ref{sec:methods}).
-    \item To evaluate the performance of MultiMeditron on established medical multimodal benchmarks (addressed in Section ).
-    \item To ensure reproducibility and facilitate collaborative research by providing comprehensive documentation and Docker images (addressed in Section ).
-%TODO: Add section references
+    \item To evaluate the performance of MultiMeditron on established medical multimodal benchmarks (addressed in Section \ref{sec:results}).
+    \item To ensure reproducibility and facilitate collaborative research by providing comprehensive documentation and Docker images (addressed in Section \ref{sec:architecture_philosophy} and Section \ref{sec:add_modality}).
 \end{enumerate}
-
 
 \subsection{Contributions}
 
 % Conclude your introduction by explicitly stating your novel contributions. Explain how your work advances the field beyond existing approaches. Describe the practical implications of your research and its potential impact.
 
 With MultiMeditron, we do not only introduce a new multimodal pipeline but also set a new standard for modularity, extensibility, and reproducibility in medical AI research. We hope that MultiMeditron will serve as a foundational tool for researchers and practitioners, accelerating the development of robust multimodal AI solutions that can effectively address complex clinical challenges and ultimately improve patient care.
+

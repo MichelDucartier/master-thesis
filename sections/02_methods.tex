@@ -3,36 +3,32 @@
 
 \subsection{Model architecture}
 
-
-
 % Figure of the architecture
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{figures/multimeditron_architecture.png}
-    \caption{\textbf{Overview of the MultiMeditron architecture.} MultiMeditron follows a Llava-like architecture where images are first processed by a modality embedder before being fused with text embeddings and passed to a large language model (LLM) for text generation. MultiMeditron allows researchers to easily plug-and-play different modality embedders and LLM architectures. In this example, we illustrate two types of modality embedders: (1) a single-expert embedder that uses the same image encoder for all image modalities, and (2) a modality-driven embedder that selects a specific image encoder based on the input image modality.}
+    \caption{\textbf{Overview of the MultiMeditron architecture.} MultiMeditron follows a LLaVA-like architecture where images are first processed by a modality embedder before being fused with text embeddings and passed to a large language model (LLM) for text generation. MultiMeditron allows researchers to easily plug-and-play different modality embedders and LLM architectures. In this example, we illustrate two types of modality embedders: (1) a single-expert embedder that uses the same image encoder for all image modalities, and (2) a modality-driven embedder that selects a specific image encoder based on the input image modality.}
     \label{fig:architecture}
 \end{figure}
 
 
 Clinical decision-making involves lots of modalities ranging from images (X-Rays, MRI, ...) to signals (Lung Ultrasound, ECG, ...) and 3D scans (Ultrasound, CT, ...).
-Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, the multimodal architecture needs to get the best performance out of existing pretrained models.
+Thus, building a multimodal medical backbone requires modularity to allow researchers to integrate the many modality types involved in the medical settings. Furthermore, because of the limited high-quality labelled medical data available, we can not afford to perform a full pretraining from scratch. Thus, our multimodal architecture needs to get the best performance out of existing pretrained models.
 
-To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
+To address those challenges, we designed MultiMeditron as a modular multimodal framework that allows researchers to easily plug-and-play different modality embedders and model architectures following the architecture introduced in \cite{liu2023visualinstructiontuning}. The overall architecture of MultiMeditron is illustrated in Figure \ref{fig:architecture}.
 
 \vspace{0.2cm}
 
-MultiMeditron builds upon the Llava architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then interleaved with text input embeddings and passed to the language decoder for text generation. This approach offers several advantages:
+MultiMeditron builds upon the LLaVA architecture \cite{liu2023visualinstructiontuning}, which uses a vision encoder to project images into the token embedding space of a large language model (LLM). The projected image embeddings are then interleaved with text input embeddings and passed to the language decoder for text generation. This approach offers several advantages:
 
 \begin{itemize}
     \item \textbf{Modularity:} This intermediate fusion approach allows for modularity, as different modality embedders and language decoder architectures can be easily swapped.
     \item \textbf{Efficient use of data:} As this architecture leverages the use of pretrained modality embedder and language model, it does not require as much data as a multimodal model built entirely from scratch.
 \end{itemize}
 
-\vspace{5mm}
-
 To enable more powerful image understanding capabilities, we integrate different types of modality embedders in MultiMeditron:
-\paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original Llava architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
-\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality. This approach is similar to the EAGLE architecture \cite{shi2025eagleexploringdesignspace}, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance. In MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. This allows the model to harness the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks. We describe this approach in more detail in Section \ref{sec:modality_driven_embedder}
+\paragraph{Single-expert embedder} As a baseline, we implement a \textbf{single-expert embedder} that uses the same image encoder for all image modalities. This approach is a reproduction of the original LLaVA architecture, where a single vision encoder (e.g., CLIP ViT-L/14) is used to process all images regardless of their modality.
+\paragraph{Modality-driven embedder} Second, we introduce a \textbf{modality-driven embedder} that combines specific image encoder (i.e. \textit{modality expert}) based on the input image modality inspired by a mixture of experts architecture. This approach is similar to the EAGLE architecture, which combines many image embedders specialized in different tasks (segmentation, contrastive learning, etc.) to improve multimodal performance \cite{shi2025eagleexploringdesignspace}. However in MultiMeditron, the embedders are modality-specific, meaning that each image modality (e.g., X-Ray, MRI, CT) is processed by a dedicated image encoder pretrained on that specific modality. We hope that this approach will allow the model to harness the strengths of each specialized encoder, leading to improved performance on multimodal medical tasks. We describe this approach in more detail in Section \ref{sec:modality_driven_embedder}
 
 \subsubsection{Modality-driven embedders}
 \label{sec:modality_driven_embedder}
@@ -44,14 +40,16 @@ To enable more powerful image understanding capabilities, we integrate different
     \label{fig:expert_fusion}
 \end{figure}
 
-The modality-driven embedder is composed of a set of image experts specialized in different medical image modalities. \ref{fig:architecture} shows an example with four specialized experts and a generalist one.
+The modality-driven embedder is composed of a set of image experts specialized in different medical image modalities with a gating network. Figure \ref{fig:architecture} shows an example with four specialized experts and a generalist one.
 
-Each expert outputs an embedding of the image, and those embeddings need to be combined before being passed to the LLM. We explore four strategies for combining the embeddings illustrated in \ref{fig:expert_fusion}:
+Each expert takes the image as input and outputs an embedding of the image. The gating network also takes the image and classifies the image into one of the modalities, i.e. either Generalist, Ultrasound, CT, Xray or MRI. Note that this module produces a vector of probabilities.
+
+We explore four strategies for combining the embeddings illustrated in Figure \ref{fig:expert_fusion}:
 
 \begin{itemize}
-    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. The projected embeddings are then averaged to obtain the final embedding.
+    \item \textbf{AVG-PEP} (Average and Per-Expert-Projection): Each expert has its own projection layer to project its embedding into the LLM token space. We then perform a weighted average on the projected embeddings using the weights produced by the gating network to obtain the final embeddind.
     \item \textbf{AVG-SHARED} (Average and Shared-Projection): A single shared projection layer is used for all experts. The embeddings from each expert are averaged first, and then the averaged embedding is projected into the LLM token space.
-    \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert.
+    \item \textbf{ATTN-PEP} (Attention and Per-Expert-Projection): Each expert has its own projection layer. The projected embeddings are combined using a attention mechanism where the specialists embeddings are passed as keys and the queries are the embeddings of the generalist expert. Every expert specialist embeddings are weighted using the gating network before feeding them into the attention layer.
     \item \textbf{ATTN-SHARED} (Attention and Shared-Projection): A single shared projection layer is used for all experts. The embeddings are combined using an attention mechanism similar to ATTN-PEP, but with a shared projection layer.
 \end{itemize}
 
@@ -67,35 +65,40 @@ where each head is computed as:
     \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
 \end{equation*}
 
-\begin{absolutelynopagebreak}
 Then, we can write formally the equations for the different fusion strategies as follows:
 \begin{itemize}
     \item \textbf{AVG-PEP}:
         \begin{equation}
-            E_{final} = \frac{1}{N} \sum_{i=1}^{N} \text{Proj}_i(E_i)
+            E_{final} = \frac{1}{N} \sum_{i=1}^{N} w_i \text{Proj}_i(E_i)
         \end{equation}
     \item \textbf{AVG-SHARED}:
         \begin{equation}
-            E_{final} = \text{Proj}\left(\frac{1}{N} \sum_{i=1}^{N} E_i\right)
+            E_{final} = \text{Proj}\left(\frac{1}{N} \sum_{i=1}^{N} w_i E_i\right)
         \end{equation}
     \item \textbf{ATTN-PEP}:
         \begin{equation}
-            E_{final} = \text{MultiHead}\left(\text{Proj}_{gen}(E_{gen}), \{ \text{Proj}_i(E_i) \}_{i=1}^{N}, \{ \text{Proj}_i(E_i) \}_{i=1}^{N}\right)
+            E_{final} = \text{MultiHead}\left(\text{Proj}_{gen}(E_{gen}), \{w_i \text{Proj}_i(E_i) \}_{i=1}^{N}, \{ w_i \text{Proj}_i(E_i) \}_{i=1}^{N}\right)
         \end{equation}
     \item \textbf{ATTN-SHARED}:
         \begin{equation}
-            E_{final} = \text{Proj}\left(\text{MultiHead}\left(E_{gen}, \{ E_i \}_{i=1}^{N}, \{ E_i \}_{i=1}^{N}\right)\right)
+            E_{final} = \text{Proj}\left(\text{MultiHead}\left(E_{gen}, \{ w_i E_i \}_{i=1}^{N}, \{ w_i E_i \}_{i=1}^{N}\right)\right)
         \end{equation}
 \end{itemize}
-where $E_i$ is the embedding from expert $i$, $E_{gen}$ is the embedding from the generalist expert, $\text{Proj}_i$ is the projection layer for expert $i$, and $\text{Proj}$ is the shared projection layer.
-\end{absolutelynopagebreak}
+where
+\begin{itemize}
+    \item $E_i$ is the embedding from expert $i$
+    \item $E_{gen}$ is the embedding from the generalist expert
+    \item $w_i$ is the weight for modality $i$ produced by the gating network
+    \item $\text{Proj}_i$ is the projection layer for expert $i$
+    \item $\text{Proj}$ is the shared projection layer.
+\end{itemize}
 
 \subsection{Training}
 \label{sec:training}
 
 The training of MultiMeditron follows the standard supervised fine-tuning (SFT) procedure proposed in \cite{liu2023visualinstructiontuning} with a 2-stage training process:
 \begin{itemize}
-    \item \textbf{Stage 1 - Alignment}: In the alignment phase, only the projection layers are trained while the experts and LLM are frozen. This allows the model to align the expert embeddings with the LLM token space without modifying the pretrained weights of the experts and LLM.
+    \item \textbf{Stage 1 - Alignment}: In the alignment phase, only the projection layers are trained while the experts and LLM are frozen. This allows the model to align the expert embeddings with the LLM token space without modifying the pretrained weights of the experts and LLM. For our modality-driven approach, we consider that the attention layer in ATTN-PEP and ATTN-SHARED is also part of the projection.
     \item \textbf{Stage 2 - End to end}: In the end-to-end phase, the projections and the LLM are fine-tuned jointly while the experts are frozen. This allows the model to adapt the LLM to better utilize the multimodal information from the experts.
 \end{itemize}
 
@@ -103,25 +106,28 @@ Notice that throughout the entire training process, the modality experts remain 
 
 \subsubsection{Infrastructure}
 
-In addition to its modularity, MultiMeditron is designed to be scalable, allowing us to train large models on massive datasets. MultiMeditron is built on top of the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural} and uses Deepspeed Zero-3 parallelism \cite{rajbhandari2020zeromemoryoptimizationstraining} to efficiently train large models across multiple GPUs.
+In addition to its modularity, MultiMeditron is designed to be scalable, allowing us to train large models on massive datasets. MultiMeditron is built on top of the HuggingFace ecosystem \cite{wolf2020huggingfacestransformersstateoftheartnatural} and uses Deepspeed Zero-3 parallelism \cite{rajbhandari2020zeromemoryoptimizationstraining} to efficiently train large models across multiple GPUs and multiple nodes.
 
 We conducted training on the CSCS cluster using NVIDIA GH200 GPUs using 32 nodes of 4 GPUs each, for a total of 128 GPUs \cite{martinasso2025alpsversatileresearchinfrastructure}.
 Each training job is orchestrated using the SLURM workload manager, which allows us to efficiently manage and schedule our training jobs on the cluster.
 
 \subsubsection{Experiments}
 
-\begin{table}
+\begin{table}[htbp]
     \centering
-    \begin{tabular}{ccc}
+    \begin{tabular}{lll}
         \toprule
         \textbf{Experiment name} & \textbf{Base LLM} & \textbf{Vision encoder} \\
         \midrule
-        Llama CLIP & LLaMa 3.1 Instruct 8B & clip-vit-base-patch32
+        MultiMeditron Qwen3-4B BiomedCLIP & Qwen3-4B & BiomedCLIP \\
+        MultiMeditron Apertus-8B BiomedCLIP & Apertus-8B & BiomedCLIP \\
+        MultiMeditron LLaMA3.1-8B BiomedCLIP & LLaMa 3.1 Instruct 8B & BiomedCLIP \\
+        MultiMeditron LLaMA3.1-8B CLIP & LLaMa 3.1 Instruct 8B & clip-vit-base-patch32
  \\
-        Llama BiomedCLIP & LLaMa 3.1 Instruct 8B & BiomedCLIP \\
-        Llama ATTN-PEP & LLaMa 3.1 Instruct 8B & MultiMeditron ATTN-PEP \\
-        Qwen3 BiomedCLIP & Qwen3-4B & BiomedCLIP \\
-        Apertus BiomedCLIP & Apertus-8B & BiomedCLIP \\
+        MultiMeditron LLaMA3.1-8B ATTN-PEP & LLaMa 3.1 Instruct 8B & MultiMeditron ATTN-PEP \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED & LLaMa 3.1 Instruct 8B & MultiMeditron ATTN-SHARED \\
+        MultiMeditron LLaMA3.1-8B AVG-PEP & LLaMa 3.1 Instruct 8B & MultiMeditron AVG-PEP \\
+        MultiMeditron LLaMA3.1-8B AVG-SHARED & LLaMa 3.1 Instruct 8B & MultiMeditron AVG-SHARED \\
         \bottomrule
     \end{tabular}
     \caption{List of conducted experiments on different LLMs and vision encoders for MultiMeditron suite of models}
@@ -130,20 +136,18 @@ Each training job is orchestrated using the SLURM workload manager, which allows
 
 To show the flexibility of MultiMeditron, we conduct experiments with different configurations of modality embedders and LLM architectures. Specifically, we experiment with:
 \begin{itemize}
-    \item \textbf{Modality embedders}: We compare the performance of a generalist single-expert embedder, a specialized single-expert embedder and the modality-driven embedder with different expert describec in Section \ref{sec:modality_driven_embedder}. Specifically, we choose \texttt{openai/clip-vit-base-patch32} \cite{radford2021learningtransferablevisualmodels} as the generalist expert and BiomedCLIP \cite{zhang2025biomedclipmultimodalbiomedicalfoundation} as the specialized single-expert embedder.
+    \item \textbf{Modality embedders}:  We compare the performance of a generalist single-expert embedder, a specialized single-expert embedder and the modality-driven embedder with different expert describec in Section \ref{sec:modality_driven_embedder}. Specifically, we choose \texttt{openai/clip-vit-base-patch32} \cite{radford2021learningtransferablevisualmodels} as the generalist expert and BiomedCLIP \cite{zhang2025biomedclipmultimodalbiomedicalfoundation} as the specialized single-expert embedder.
     \item \textbf{Expert fusion strategies}: For the modality-driven embedder, we compare the four expert fusion strategies described in Section \ref{sec:modality_driven_embedder}: AVG-PEP, AVG-SHARED, ATTN-PEP, and ATTN-SHARED.
-    \item \textbf{LLM architectures}: We experiment with different LLM architectures, including Llama 3.1 Instruct 8B \cite{grattafiori2024llama3herdmodels}, Qwen-3 Instruct 4B \cite{yang2025qwen3technicalreport} and Apertus Instruct 8B \cite{apertus2025apertusdemocratizingopencompliant}.
+    \item \textbf{LLM architectures}: We experiment with different LLM architectures, including LLaMA 3.1 Instruct 8B \cite{grattafiori2024llama3herdmodels}, Qwen-3 Instruct 4B \cite{yang2025qwen3technicalreport} and Apertus Instruct 8B \cite{apertus2025apertusdemocratizingopencompliant}.
 \end{itemize}
 
-We conducted 6 experiments to test the performance of MultiMeditron. The details of the 6 experiments are listed in Table \ref{tab:experiments}. Llama CLIP acts as our baseline. We attempt to increase the performance of MultiMeditron by:
-\begin{enumerate}
-    \item Changing the vision encoder to a medically specialized one with either BiomedCLIP or our modality-driven experts
-    \item Changing the base LLM architecture, from Llama 3.1 Instruct 8B to Qwen3-4B or Apertus-8B
-\end{enumerate}
+\begin{infowarning}
+    In our experiments, we picked Qwen3-4B-\textbf{Instruct} which is \textbf{not a reasoning model}. We observed that reasoning models tend to misalign their embeddings with visual embedders, see Section \ref{sec:reasoning_alignment}
+\end{infowarning}
 
-Multimodal models trained with medically specialized vision embedders outperform those using general-purpose vision embedders \cite{sellergren2025medgemmatechnicalreport}. Accordingly, we adopt BiomedCLIP in our architectures when replacing the base LLM with Qwen3-4B or Apertus Instruct 8B.
+We conducted 8 full training to test the performance of MultiMeditron on different configuration. The details of the 6 experiments are listed in Table \ref{tab:experiments}.
 
-BiomedCLIP is trained exclusively on open data from PubMed Central and is built upon fully open models, including PubMedBERT a Vision Transformer pretrained on general-domain public data \cite{zhang2025biomedclipmultimodalbiomedicalfoundation,dosovitskiy2020vit}.
+BiomedCLIP is trained exclusively on open data from PubMed Central and is built upon fully open models, including PubMedBERT a Vision Transformer pretrained on general-domain public data \cite{zhang2025biomedclipmultimodalbiomedicalfoundation,dosovitskiy2020vit}. As Apertus and MultiMeditron's data is fully open, this would make MultiMeditron Apertus-8B BiomedCLIP a fully open multimodal medical model.
 
 Across all experiments, we use the same training dataset described in \ref{tab:dataset} and the same hyperparameters summarized in Table \ref{tab:hyperparameters}.
 
@@ -156,9 +160,9 @@ Across all experiments, we use the same training dataset described in \ref{tab:d
         \midrule
         Optimizer & AdamW & AdamW \\
         Learning Rate & $1e-4$ & $1e-5$ \\
-        Per device batch Size & 4 & 4 \\
+        Per device batch Size & 4 & 2 \\
         Gradient accumulation steps & 8 & 8 \\
-        Total batch size & 4096 & 4096 \\
+        Total batch size & 4096 & 2048 \\
         Learning Rate Scheduler & Cosine Decay & Cosine Decay \\
         Min Learning Rate & $3e-5$ & $3e-6$ \\
         Mixed Precision & BF16 & BF16 \\
@@ -167,8 +171,6 @@ Across all experiments, we use the same training dataset described in \ref{tab:d
     \caption{Training hyperparameters for all MultiMeditron training.}
     \label{tab:hyperparameters}
 \end{table}
-
-
 
 \subsection{Data}
 
@@ -271,7 +273,7 @@ The dataset contains 13,808,367 samples in total, comprising 10,282,292 medical 
 
 Each sample is composed of conversations between a user and the model, where the user provides an image and a prompt, and the model generates a response. The images are interleaved with text tokens in the input sequence.
 
-MultiMeditron relies on a two-phase training strategy consisting of an alignment phase and an end-to-end phase. The objective of the alignment phase is to align the modality-specific embeddings with the language decoder’s token space by exclusively training the projection layers. Consequently, this phase requires image-text captioning data to enable the model to learn diverse visual representations. To achieve this, we incorporate generalist captioning datasets during this alignment phase such as the Pixmo datasets, LLaVA Pretrain. This allows the model to learn generalist image-text captioning representations.
+MultiMeditron relies on a two-phase training strategy consisting of an alignment phase and an end-to-end phase. The objective of the alignment phase is to align the modality-specific embeddings with the language decoder’s token space by exclusively training the projection layers. Consequently, this phase requires image-text captioning data to enable the model to learn diverse visual representations. To achieve this, we incorporate generalist captioning datasets during this alignment phase such as the Pixmo datasets and LLaVA Pretrain. This allows the model to learn generalist image-text captioning representations.
 In addition, to ensure alignment on medical data, we sample 100,000 examples from the MedTrinity dataset for use during this phase. By leveraging this MedTrinity subset, we aim to optimize the model’s ability to produce coherent medical representations in addition to its generalist representations.
 
 In contrast, the end-to-end phase requires substantially more data, as the language model is unfrozen and jointly optimized with the rest of the architecture. This requirement explains why the majority of the training data is allocated to this phase. During end-to-end training, we leverage high-quality, task-diverse data encompassing a range of objectives, including image captioning and visual question answering.
@@ -290,10 +292,6 @@ To enhance the quality of the training data, we applied several processing steps
 
 Because of the size of the MedTrinity dataset (10M samples), we parallelize the reformatting process on multiple nodes by first sharding the dataset into smaller chunks and then processing each chunk independently on a separate node. This distributed approach allows us to efficiently handle the large volume of data while ensuring consistent reformatting across the entire dataset.
 
-
-% TODO: In the future, provide a link to the processing scripts.
-
-\begin{absolutelynopagebreak}
 \subsection{Evaluation}
 
 To ensure reproducibility of our benchmarking results, we integrate MultiMeditron with the \texttt{lmms-eval} framework \cite{lmms_eval2024}.
@@ -301,26 +299,25 @@ To ensure reproducibility of our benchmarking results, we integrate MultiMeditro
 To evaluate the performance of MultiMeditron, we use the following benchmarks:
 \begin{itemize}
     \item \textbf{GMAI-MMBench}: A multimodal medical MCQ proposed in \cite{chen2024gmaimmbenchcomprehensivemultimodalevaluation} that covers 38 medical image modalities, 18 clinical-related tasks, 18 departments, and 4 perceptual granularities in a Visual Question Answering (VQA) format. We use the official validation split for evaluation containing 4,550 questions.
-    \item \textbf{PathVQA}: A multimodal medical benchmark proposed in \cite{he2020pathvqa30000questionsmedical} with open-ended questions and Y/N questions. This benchmark has been manually verified by medical experts to ensure the correctness of the questions and answers. We use the official two-part test for assessment, which contains 6,719 questions, including 3,362 yes/no questions.
+    \item \textbf{PathVQA}: A multimodal medical benchmark proposed in \cite{he2020pathvqa30000questionsmedical} with open-ended questions and Y/N questions. This benchmark has been manually verified by medical experts to ensure the correctness of the questions and answers. We use the official test split for assessment, which contains 6,719 questions, including 3,362 yes/no questions.
     \item \textbf{SLAKE}: A multimodal medical benchmark proposed in \cite{liu2021slakesemanticallylabeledknowledgeenhanceddataset} that comprises open-ended questions and Y/N questions. This benchmark focuses on a variety of body parts and richer modalities. We use the official test split for assessment, which contains 2094 questions, including 175 yes/no questions.
 \end{itemize}
-\end{absolutelynopagebreak}
-
 
 \subsection{Loglikelihood evaluation}
+\label{sec:loglikelihood_methods}
 
-We evaluate a MultiMeditron by computing the conditional likelihood of a predefined answer (e.g., a multiple-choice option) given a multimodal prompt consisting of text and images.
+Out first evaluation targets the raw token distribution of MultiMeditron independent of its ability to follow instructions. The core idea of the loglikelihood benchmark is to check the proability of MultiMeditron producing the correct answer using teacher forcing.
+This is done by computing the conditional likelihood of a predefined answer (e.g., a multiple-choice option) given a multimodal prompt consisting of text and images.
 
 Rather than sampling or free-form generation, we perform teacher-forced evaluation:
 \begin{itemize}
     \item The model is conditioned on the full input sequence (prompt + image).
     \item The log-likelihood of the candidate answer tokens is computed using the model's logits
-    \item Out of a set of options, we consider that the model answer option $y$ if the negative log likelihood
+    \item Out of a set of options, we consider that the model answers option $y$ if the probability if outputing $y$ is the highest among all the possible options
 \end{itemize}
-
 This approach allows us to assign a scalar score to each candidate answer (negative log-likelihood).
-More formally, let:
 
+More formally, let:
 \begin{itemize}
     \item $x = (x^{\text{text}}, x^{\text{img}})$ be the multimodal input, consisting of:
         \begin{itemize}
@@ -328,7 +325,7 @@ More formally, let:
             \item a set of images $x^{\text{img}} = { I_1, \dots, I_K }$
         \end{itemize}
     \item $y = (y_1, \dots, y_T)$ be a candidate answer token sequence.
-    \item $z_t = (z_{t,1}, \dots, z_{t,V})$ be the logits where $z_t$ are the logits for output token $t \in [1, T]$ and $V$ is the size of the vocabulary
+    \item $z_t = (z_{t,1}, \dots, z_{t,V})$ be the logits where $z_t$ are the logits for output token $t \in [1, T]$ and $V$ is the the vocabulary size of our model
 \end{itemize}
 
 The model is an autoregressive multimodal language model parameterized by $\theta$, which defines a conditional token distribution:
@@ -353,10 +350,7 @@ Then, we report the accuracy of the model for all questions in our benchmark.
 
 \subsection{Exact match evaluation}
 
-
 In exact match evaluation, we let the model generate a full answer with or without a chain of thoughts with a temperature at 0 to disable randomness. Then we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets. The accuracy is then reported for each model and each benchmark.
-
-For example, we extract the LLM answer using a regular expression that captures the text following the \texttt{"Answer:"} or \texttt{"The answer is"} pattern in the model's generated response. We then compute the accuracy by comparing the extracted answers to the ground truth answers provided in the benchmark datasets. The accuracy is then reported for each model and each benchmark.
 
 \begin{table}
     \centering
@@ -379,4 +373,4 @@ In Table \ref{tab:prompt_templates}, we present the prompt templates for each be
 
 The GMAI templates encourage the model to produce a chain of thought (CoT) and to explicitly detail the reasoning behind each step. In contrast, the prompts used for SLAKE and PathVQA request short answers without accompanying explanations. While CoT improves performance on closed-ended questions, we observe degraded performance on open-ended benchmarks such as SLAKE and PathVQA. This degradation is primarily due to the difficulty of matching free-form explanations to exact answers using regular expressions and accounting for synonymous expressions.
 
-To address this issue, we remove the CoT prompting and instruct the model to produce answers that are as concise as possible. The revised prompt templates for SLAKE and PathVQA adopt a question-answering format, requiring the model to output a single word or short phrase corresponding to the correct answer.
+To address this issue, we remove the CoT prompting and instruct the model to produce answers that are as concise as possible. The revised prompt templates for SLAKE and PathVQA require the model to output a single word or short phrase corresponding to the correct answer.

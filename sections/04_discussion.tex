@@ -1,6 +1,6 @@
-% \section{Discussion}
-% \label{sec:discussion}
-%
+\section{Discussion}
+\label{sec:discussion}
+
 % \subsection{Key findings}
 %
 % Synthesize your main results and connect them back to your objectives. Explain how your findings address the research gap identified in your background section.
@@ -21,4 +21,51 @@
 %
 % Summarize your main contribution concisely. State the broader impact of your work on the field. End with a compelling statement about the significance of your findings.
 
+\subsection{Key findings}
 
+The primary objective of this work was to design a performant multimodal medical large language model while progressively moving toward a fully open and reproducible pipeline. MultiMeditron has shown that it could yield competitive results against other proprietary multimodal models or partially closed models while providing an open, reproducible and modular framework for training multimodal models.
+
+First, the experiments show that domain-specific vision encoders are a decisive factor for multimodal medical performance.
+Although MultiMeditron LLaMA3.1 BiomedCLIP performs slightly worse than its CLIP counterpart on non-COT benchmarks such as PathVQA and SLAKE, it demonstrates superior performance on benchmarks that require reasoning, such as GMAI.
+This result suggests that, if the full potential of BiomedCLIP is harnessed, it may outperform its CLIP counterpart in multimodal medical reasoning scenarios.
+The observed performance gap may be attributed to the fact that the vision encoder in BiomedCLIP is specifically tailored to handle domain-specific variations between modalities, such as anatomical differences.
+ The success of BiomedCLIP underscores the importance of fine-tuning domain-specific vision encoders to bridge such gaps and enhance the overall performance of multimodal models in medical contexts.
+
+Second, the findings indicate that larger language models do not systematically lead to better multimodal medical reasoning. Smaller models, such as the Qwen3-4B BiomedCLIP variant, achieve performance comparable to or exceeding that of 8B LLaMA-based and Apertus counterparts. This supports the hypothesis that architectural alignment and domain specialization also plays a big role in the medical multimodal setting. Better base language model may produce more expressive text embeddings that align better with vision embeddings produced by the modality embedders.
+
+While modality-driven fusion architectures (e.g. ATTN-PEP, ATTN-SHARED, AVG-PEP, AVG-SHARED) achieve competitive results, they do not yet consistently outperform simpler CLIP-based designs. This suggests that the potential of explicit modality specialization remains unexploited under the current training and evaluation frameworks. One plausible explanation is that expert models may generate suboptimal embeddings when confronted with modalities outside their training distribution, introducing noise into the combined embeddings and potentially compromising their expressiveness. More specifically, if the gating network selects the wrong expert for a given modality, this could result in this expert giving embeddings that are noisy as they are out-of-distribution, making this modality-driven approach highly dependent on the quality of the gating network. Furthermore, if our data mixture does not provide enough examples for a given modality, the per-expert-projection approach will struggle to converge. This will result in some experts underfitting comparing to others.
+
+\subsection{Implications}
+
+From a theoretical perspective, these results reinforce recent findings in the multimodal literature that representation quality at the vision–language interface is critical for downstream reasoning. The strong performance of BiomedCLIP aligns with prior work showing that biomedical pretraining improves medical image understanding, and extends this observation to instruction-tuned multimodal LLMs.
+
+Practically, this work demonstrates that competitive medical multimodal systems can be built using open or fully open components, challenging the assumption that high-performing medical VLMs must rely on closed datasets or proprietary encoders. The results obtained with the fully open MultiMeditron Apertus-8B BiomedCLIP model show that transparency and reproducibility can be achieved with only a moderate performance trade-off.
+
+\subsection{Limitations}
+
+This study has several limitations that must be acknowledged. First, open-ended question performance remains low across all evaluated models, partly due to the strict exact-match evaluation protocol. This likely underestimates the true semantic correctness of generated answers, particularly in cases where multiple phrasings are clinically acceptable.
+
+% Second, the modality-driven encoders rely on predefined modality categories and assume accurate modality assignment during training and inference. Errors or ambiguity in modality labeling may reduce the effectiveness of expert specialization.
+
+Second, the evaluation is limited to three benchmarks, which, while widely used, do not fully capture the diversity and complexity of clinical imaging tasks. Generalization beyond these datasets cannot be guaranteed.
+Furthermore, while these benchmarks help to evaluate the clinical knowledge of those models, they do not reflect their performance in real-world settings. In particular, they do not test whether the models are aligned with doctors' preferences or not.
+
+Finally, the language backbone used in most experiments is LLaMA 3.1, which, while widely adopted and well-supported, is not optimized for explicit multi-step reasoning compared to more recent reasoning-focused models. This may limit performance on complex medical queries that require longer chains of inference or deeper clinical reasoning.
+
+However, it is important to note that among general-purpose instruction-tuned (non-reasoning) models in the 8B parameter range, LLaMA 3.1 remains a strong and competitive baseline. Its widespread use, stable instruction-following behavior, and strong multilingual and general-domain capabilities make it a relevant and reasonable choice for evaluating architectural and vision-encoder contributions. Consequently, while absolute performance may be constrained by the language model, the comparative findings and architectural insights presented in this work remain valid.
+
+\subsection{Future work}
+
+Several directions emerge naturally from this work. First, future research should explore more flexible evaluation metrics for open-ended medical answers, including semantic similarity or LLM-as-a-judge evaluation, to better capture the model's capabilities.
+
+Second, the modality-driven embedder (i.e., the experts and the fusion/projection layers) could be further optimized by focusing on its raw performance, irrespective of the underlying architecture. To achieve this, the modality-driven embedder should be decoupled from the MultiMeditron framework and jointly trained to improve the alignment of image embeddings with text embeddings in medical datasets.
+
+Third, extending the training data to include more diverse and balanced modality distributions may enable expert-based architectures to fully exploit their design advantages. Notably, the ultrasound modality is underrepresented in our dataset, and the only sizable dataset in our mixture consists solely of COVID cases, which could potentially introduce harmful biases on those modalities. Moreover, MultiMeditron requires a richer dataset as it currently lacks variety in the medical tasks. Datasets that put the emphasis on spatial understanding and OCR even in the general-domain could lead to better performance and image understanding.
+
+Finally, scaling the fully open pipeline to larger models and additional modalities, such as signals and 3D scans, while maintaining modularity, reproducibility, and openness, represents a crucial next step toward the development of transparent and trustworthy medical AI systems.
+
+\subsection{Conclusion}
+
+In this thesis, we introduced MultiMeditron, a LLaVA-inspired multimodal medical LLM designed to balance performance, modality awareness, and openness. Through systematic evaluation, we showed that domain-specific vision encoders play a central role in medical multimodal reasoning and that fully open models can achieve competitive results on established benchmarks.
+
+Beyond the specific architectural choices explored, this work demonstrates that reproducible and transparent multimodal medical models are a viable alternative to closed systems. By bridging performance and openness, MultiMeditron contributes to the broader effort of making medical AI more accessible, verifiable, and aligned with the needs of clinical and academic communities.

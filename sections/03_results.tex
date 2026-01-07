@@ -1,79 +1,64 @@
-% For each objective listed in Section \ref{sec:aim}, present your results in a dedicated subsection. Within each subsection:
-%
-% \subsection{Results for objective 1}
-% \label{sec:results1}
-%
-% Present your findings in a logical sequence. Begin with descriptive statistics or baseline results. Follow with your main analyses. Include relevant tables and figures, ensuring each is self-explanatory with comprehensive captions.
-%
-% \subsection{Results for objective 2}
-% \label{sec:results2}
-%
-% Present results that directly address your second objective. Include statistical analyses and significance levels. Compare your results with relevant benchmarks or baselines.
-%
-% \subsection{Results for objective 3}
-% \label{sec:results3}
-%
-% Document the outcomes of your methodology development. Include performance metrics and validation results. Present any ablation studies or sensitivity analyses performed.
-%
-% \subsection{Results for objective 4}
-% \label{sec:results4}
-%
-% Present comparative analyses between your method and existing approaches. Use statistical tests to support your conclusions. Include measures of practical significance.
-% \begin{table}[htb]
-%     \centering
-%     \caption{Pulmonary function test results}
-%     \label{tab:pft_results}
-%     \begin{tabular}{@{}llcccc@{}}
-%         \toprule
-%         \textbf{Group} & \textbf{Base model}
-%         & & \multicolumn{1}{c}{\textit{Value}} & \multicolumn{1}{c}{\textit{\% Pred}} & \multicolumn{1}{c}{\textit{Value}} & \multicolumn{1}{c}{\textit{\% Pred}} \\
-%         \hline
-%         \multirow{3}{*}{Open models}
-%             & FEV\textsubscript{1} (L) & 3.82 & 98.5 & 3.90 & 100.2 \\
-%             & FVC (L) & 4.75 & 97.3 & 4.80 & 98.4 \\
-%             & FEV\textsubscript{1}/FVC (\%) & 80.4 & -- & 81.3 & -- \\
-%         \hline
-%         \multirow{3}{*}{Other models}
-%             & FEV\textsubscript{1} (L) & 2.15 & 55.4 & 2.45 & 63.1 \\
-%             & FVC (L) & 3.52 & 72.1 & 3.78 & 77.5 \\
-%             & FEV\textsubscript{1}/FVC (\%) & 61.1 & -- & 64.8 & -- \\
-%         \bottomrule
-%     \end{tabular}
-% \end{table}
-
 \section{Results}
 \label{sec:results}
 
+We evaluate MultiMeditron, a multimodal medical large language model derived from a LLaVA-style architecture, across three medical image–text benchmarks: GMAI, PathVQA, and SLAKE. GMAI is evaluated as a multiple-choice task, while PathVQA and SLAKE contain both yes/no and open-ended questions, with correctness determined by exact string match. Results are reported as accuracy in percentage.
+
 \subsection{Loglikelihood on aligned models}
-
-This section presents
-
-\begin{table}
-
-\end{table}
-
-\subsection{End-to-End results}
 
 \begin{table}
     \centering
-    \setlength{\tabcolsep}{2.2pt}
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabular}{l|c|c|c}
+        \hline
+        \textbf{Model name}                    & \textbf{GMAI} & \textbf{PathVQA (yes/no)} & \textbf{SLAKE (yes/no)} \\
+        \hline
+        MultiMeditron Qwen3-4B BiomedCLIP      & \textbf{30.3}                     & \textbf{55.8}                                 & \textbf{56.1}                               \\
+        MultiMeditron Apertus-8B BiomedCLIP    & 28.1                              & 48                                            & 52.4                                        \\
+        MultiMeditron LLaMA3.1-8B BiomedCLIP   & 29.4                              & 46.6                                          & 48.5                                        \\
+        MultiMeditron LLaMA3.1-8B CLIP         & 27.9                              & 52.7                                          & 49.6                                        \\
+        MultiMeditron LLaMA3.1-8B ATTN-PEP    & 28.5                              & 54.1                                          & 48.7                                        \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED & 28.2                              & 53.9                                          & 49.3                                        \\
+        MultiMeditron LLaMA3.1-8B AVG-PEP     & 28.1                              & 54.3                                          & 49.3                                        \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED & 28.3                              & 51                                            & 49.3                                        \\
+        \hline
+    \end{tabular}
+    \caption{Loglikelihood evaluation of MultiMeditron after the alignment phase on medical image-text benchmarks. Each value reported is the accuracy in percentage following the loglikelihood method described in Section \ref{sec:loglikelihood_methods}}
+    \label{tab:alignment_eval}
+\end{table}
+
+Table \ref{tab:alignment_eval} reports the logits-based evaluation after the alignment phase, isolating the effect of different vision encoders and fusion strategies before full end-to-end training phase. We report the standard error below for each loglikelihood benchmark:
+
+\begin{itemize}
+    \item \textbf{GMAI-MMBench}: 0.67\%
+    \item \textbf{PathVQA}: 0.86\%
+    \item \textbf{SLAKE}: 2.6\%
+\end{itemize}
+
+Across all benchmarks, MultiMeditron Qwen3-4B with BiomedCLIP achieves the strongest performance, reaching 30.3\% on GMAI, 55.8\% on PathVQA yes/no, and 56.1\% on SLAKE yes/no. This model consistently outperforms larger 8B variants, indicating that domain-specific visual pretraining (BiomedCLIP) combined with a better base LLM is more impactful than increased language model size at this stage.
+
+Among LLaMA-based variants, BiomedCLIP again yields the best overall results, outperforming standard CLIP on both PathVQA and SLAKE. Modality-driven encoders (ATTN-PEP, ATTN-SHARED, AVG-PEP, AVG-SHARED) show competitive but slightly lower performance, with scores clustering tightly around 28–29\% on GMAI and 48–54\% on yes/no tasks. Differences between attention-based and averaging-based fusion are modest at this stage, suggesting that the alignment phase alone is insufficient to fully exploit modality specialization.
+
+\begin{table}
+    \centering
+    \setlength{\tabcolsep}{3.0pt}
     \renewcommand{\arraystretch}{1.4}
     \begin{tabular}{l|c|ccc|ccc}
         \hline
         \multirow{2}{*}{\textbf{Model name}} & \multirow{2}{*}{\textbf{GMAI}} & \multicolumn{3}{c|}{\textbf{PathVQA}} & \multicolumn{3}{c}{\textbf{SLAKE}} \\
-                                             &                                & yes/no & open-ended & overall        & yes/no & open-ended & overall         \\
-                                                  \hline
-                                                  \multicolumn{8}{l}{\textbf{Open weights}} \\
-                                                  \hline
+                                             &                                & y/n & open-end & overall          & y/n & open-end & overall         \\
+                                             \hline
+                                             \multicolumn{8}{l}{\textbf{Open weights}} \\
+                                             \hline
         MedGemma 4B                               & \textbf{44.9}                  & \textbf{64.9} & 4.1            & \textbf{34.5}    & 50            & \textbf{32.4}   & \textbf{33.8}   \\
         Perception-LM 8B                          & 42.2                           & 56.1          & 1.4            & 28.7             & 52.1          & 27.8            & 29.9            \\
         MultiMeditron Qwen3-4B BiomedCLIP         & 35.3                           & 57.4          & 2.4            & 29.9             & \textbf{55.6} & 27.7            & 30.1            \\
-        MultiMeditron Llama3.1 8B BiomedCLIP      & 36.6                           & 55.7          & 3.4            & 29.5             & 48.1          & 22.4            & 24.5            \\
-        MultiMeditron Llama3.1 8B CLIP            & 34                             & 60.6          & \textbf{5.6}   & 33.1             & 50.5          & 28.5            & 30.3            \\
-        MultiMeditron Llama 3.1 8B ATTN-PEP       & 29.6                           & 59.1          & 1.5            & 30.3             & 51.1          & 27.6            & 29.6            \\
-        MultiMeditron Llama 3.1 8B ATTN-SHARED    & 28.6                           & 56.9          & 2              & 29.5             & 46            & 25.8            & 27.5            \\
-        MultiMeditron Llama 3.1 8B AVG-PEP        & 30.7                           & 46.5          & 2.5            & 24.5             & 47.6          & 25.8            & 27.6            \\
-        MultiMeditron Llama 3.1 8B ATTN-SHARED    & 29.7                           & 46.8          & 2.6            & 24.2             & 49.5          & 23.7            & 25.8            \\
+        MultiMeditron LLaMA3.1-8B BiomedCLIP      & 36.6                           & 55.7          & 3.4            & 29.5             & 48.1          & 22.4            & 24.5            \\
+        MultiMeditron LLaMA3.1-8B CLIP            & 34                             & 60.6          & \textbf{5.6}   & 33.1             & 50.5          & 28.5            & 30.3            \\
+        MultiMeditron LLaMA3.1-8B ATTN-PEP       & 29.6                           & 59.1          & 1.5            & 30.3             & 51.1          & 27.6            & 29.6            \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED    & 28.6                           & 56.9          & 2              & 29.5             & 46            & 25.8            & 27.5            \\
+        MultiMeditron LLaMA3.1-8B AVG-PEP        & 30.7                           & 46.5          & 2.5            & 24.5             & 47.6          & 25.8            & 27.6            \\
+        MultiMeditron LLaMA3.1-8B ATTN-SHARED    & 29.7                           & 46.8          & 2.6            & 24.2             & 49.5          & 23.7            & 25.8            \\
         \hline
         \multicolumn{8}{l}{\textbf{Fully Open}}                                                                                                                \\
         \hline
@@ -81,13 +66,18 @@ This section presents
         MultiMeditron Apertus-8B BiomedCLIP                     & 34.2             & 57.4          & 1.2            & 29.9             & 51.3           & 21              & 23.6            \\
         \hline
     \end{tabular}
-    \caption{Evaluation of MultiMeditron after the end-to-end phase and other multimodal models on medical image–text benchmarks. Here. we report the accuracy in percentage for each benchmark. For open-ended questions, an answer is correct if it exactly matches the expected answer. The overall columns show the combined accuracy over yes/no and open-ended questions for the given benchmark}
-    \label{tab:eval}
+    \caption{Evaluation of MultiMeditron after the end-to-end phase and other multimodal models on medical image–text benchmarks. Here, we report the accuracy in percentage for each benchmark. For open-ended questions, an answer is correct if it exactly matches the expected answer. The overall columns show the combined accuracy over yes/no and open-ended questions for the given benchmark}
+    \label{tab:end2end_eval}
 \end{table}
 
-This section presents the quantitative evaluation of the proposed multimodal medical language models after the end-to-end training phase on three widely used medical vision–language benchmarks: GMAI, PathVQA, and SLAKE.
+\subsection{End-to-End results}
 
-All results are reported in terms of accuracy, computed using an exact-match criterion between the model prediction and the ground-truth answer. GMAI is formulated as a multiple-choice task, while PathVQA and SLAKE contain both yes/no and open-ended questions. We show the results of our evaluation on these benchmarks in Table \ref{tab:eval}
+Table \ref{tab:end2end_eval} presents end-to-end instruction-tuned results, including comparisons with strong open-weight and fully open multimodal baselines.
 
+In the open-weight category, MultiMeditron variants achieve competitive performance relative to Perception-LM and MedGemma. Notably, while the accuracy across all models is low for PathVQA, MultiMeditron LLaMA3.1-8B CLIP still attains the highest open-ended PathVQA accuracy (5.6\%) among MultiMeditron models and competitive overall accuracy (33.1\%).
+MultiMeditron Qwen3-4B BiomedCLIP performs best on SLAKE yes/no (55.6\%), highlighting the robustness of BiomedCLIP on clinically grounded binary decisions. This underlines the fact that larger language backbones do not consistently outperform smaller ones, as evidenced by the strong performance of the 4B Qwen3 variant.
 
+Open-ended question performance remains substantially lower than yes/no accuracy across all models, with values typically below 6\% on Path-VQA, reflecting the difficulty of exact-match evaluation in free-form medical answering.
+
+In the fully open setting, MultiMeditron Apertus-8B BiomedCLIP achieves 34.2\% on GMAI and competitive results on PathVQA and SLAKE, approaching the performance of Molmo2-O-7B, even matching partially closed models like Perception-LM on SLAKE and PathVQA.
 

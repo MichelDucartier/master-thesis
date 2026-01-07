@@ -1,11 +1,29 @@
 \section*{\ackname}
 
-Begin by thanking your thesis supervisor and describing their role in shaping this digital health project. Thank medical partners and healthcare professionals who provided domain expertise or facilitated data access. Acknowledge technical team members who assisted with AI/ML development or data analysis. Thank those who helped with data annotation, validation, or clinical interpretation. If relevant, acknowledge the healthcare institutions that collaborated in the study. Mention any funding or computational resources that supported this work.
+% Begin by thanking your thesis supervisor and describing their role in shaping this digital health project. Thank medical partners and healthcare professionals who provided domain expertise or facilitated data access. Acknowledge technical team members who assisted with AI/ML development or data analysis. Thank those who helped with data annotation, validation, or clinical interpretation. If relevant, acknowledge the healthcare institutions that collaborated in the study. Mention any funding or computational resources that supported this work.
+
+I would like to express my deepest gratitude to my thesis supervisor, Annie, for her invaluable guidance and support throughout this project. Her encouragement to challenge the status quo, as well as her access to cutting-edge resources through the Clintextualization project, enabled me to explore innovative approaches in AI and machine learning. Her belief in the potential of this work and her ability to create a collaborative and dynamic research environment were truly inspiring.
+
+I also sincerely thank the MultiMeditron team, whose contributions to the development of the remarkable framework were essential. Their expertise in building a robust and scalable system for medical data analysis directly supported the progress of this project.
+
+I am grateful to the whole LiGHT laboratory for their warm welcome and fun events throughout the semester. Their commitment to creating a supportive and enjoyable academic environment kept my mood high and motivated.
+
+This project was made possible through the funding and computational resources provided by the CSCS cluster, which allowed us to leverage powerful hardware and advanced tools for the analysis and training of the AI models.
 
 \section*{Data and code availability}
 
-Specify where and how verified researchers can access the protected health data used in this study. Describe the data-sharing agreements and authentication process required. For synthetic or anonymized datasets, provide repository information. Document where to find the relevant code, preprocessing pipelines, and evaluation scripts while excluding any sensitive parameters. Include contact information for data access requests. State which components are openly available versus restricted due to privacy concerns.
+Datasets can be found on the OpenMeditron huggingface organization: \url{https://huggingface.co/OpenMeditron}
+
+The dataset used to train MultiMeditron can be found here: \url{https://huggingface.co/datasets/OpenMeditron/MultiMediset}. All licenses and sources are shown in Table \ref{tab:dataset}.
+
+The training code is released under the Apache 2.0 license and is available here: \url{https://github.com/EPFLiGHT/MultiMeditron}
+
+The evaluation code is a fork of \texttt{lmms-eval} and is available here: \url{https://github.com/EPFLiGHT/lmms-eval}
+
+Please contact Michael Zhang at \href{mailto:michael.zhang@epfl.ch}{michael.zhang@epfl.ch} or Mary-Anne Hartley at \href{mailto:mary-anne.hartley@epfl.ch}{mary-anne.hartley@epfl.ch} for any inquiries about this project.
 
 \section*{Ethical considerations}
 
-State all medical ethics committee approvals obtained for working with patient data. Document compliance with health data protection regulations (HIPAA, GDPR, \etc). Describe the data anonymization protocols implemented. Explain measures taken to protect patient privacy throughout the AI development pipeline. Detail the informed consent process if direct patient participation was involved. Address potential biases in the medical AI system and any steps taken to mitigate them. Include ethics committee protocol numbers and approval dates.
+The MultiMeditron suite of models is trained on open and licensed medical data. Each data source has been carefully validated, and we have taken extra steps to ensure that only licensed data is used. Licenses for each training dataset are provided in Table \ref{tab:dataset}.
+
+It is important to note that MultiMeditron is a research tool designed for multimodal medical modeling and is not intended for real-world clinical use. It should never be relied upon as a substitute for the guidance and expertise of a licensed medical professional. Always consult a qualified healthcare provider for any medical decision or diagnosis.

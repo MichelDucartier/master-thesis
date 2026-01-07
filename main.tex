@@ -59,21 +59,95 @@
 \usepackage{xcolor}
 \usepackage{listings}
 
-\lstset{language=python,keywordstyle={\bfseries \color{blue}}}
+% \lstset{language=Python,keywordstyle={\bfseries \color{blue}}}
+\definecolor{ctp_base}{HTML}{eff1f5}
+\definecolor{ctp_text}{HTML}{4c4f69}
+\definecolor{ctp_subtext0}{HTML}{6c6f85}
+\definecolor{ctp_surface0}{HTML}{ccd0da}
+\definecolor{ctp_blue}{HTML}{1e66f5}
+\definecolor{ctp_mauve}{HTML}{8839ef}
+\definecolor{ctp_green}{HTML}{40a02b}
+\definecolor{ctp_maroon}{HTML}{e64553}
+\definecolor{ctp_peach}{HTML}{fe640b}
+\lstset{
+    backgroundcolor=\color{ctp_base},
+    basicstyle=\ttfamily\small\color{ctp_text},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{ctp_subtext0}\itshape,
+    extendedchars=true,
+    frame=single,
+    rulecolor=\color{ctp_surface0},
+    keepspaces=true,
+    keywordstyle=\color{ctp_mauve}\bfseries,
+    language=Python,
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{ctp_subtext0},
+    rulecolor=\color{ctp_surface0},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stepnumber=1,
+    stringstyle=\color{ctp_green},
+    tabsize=4,
+    title=\lstname,
+    % Custom Highlight for Decorators and Types
+    emph={self, @AutoModalityLoader, @AutoModality, register},
+    emphstyle=\color{ctp_maroon},
+    morekeywords={as, assert, with}
+}
+% \lstset{
+%     backgroundcolor=\color{ctp_base},
+%     basicstyle=\color{ctp_text}\ttfamily\small,
+%     breakatwhitespace=false,
+%     breaklines=true,
+%     captionpos=b,
+%     commentstyle=\color{ctp_overlay}\itshape,
+%     escapeinside={\%*}{*)},
+%     extendedchars=true,
+%     frame=single,
+%     rulecolor=\color{ctp_mauve}, % Frame color
+%     frameround=tttt,
+%     keywordstyle=\color{ctp_mauve}\bfseries,
+%     language=Python,
+%     morekeywords={self, @AutoModalityLoader.register, @AutoModality.register},
+%     numbers=left,
+%     numbersep=10pt,
+%     numberstyle=\tiny\color{ctp_overlay},
+%     showspaces=false,
+%     showstringspaces=false,
+%     showtabs=false,
+%     stepnumber=1,
+%     stringstyle=\color{ctp_green},
+%     tabsize=4,
+%     title=\lstname,
+%     xleftmargin=15pt,
+%     xrightmargin=5pt
+% }
+\makeatletter
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Tikz and graphs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usetikzlibrary{positioning, calc}
 
+% Colors
+\definecolor{qwen-primary}{HTML}{615CED}
+\definecolor{llama-primary}{HTML}{0064E0}
+\definecolor{molmo-primary}{HTML}{F0529C}
+\definecolor{multimeditron-primary}{HTML}{EFCD5F}
+\definecolor{apertus-primary}{HTML}{DD342F}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Report metadata
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main title - appears on cover page and headers
-\renewcommand{\reportTitle}{Engineering a robust and scalable framework for muldimodal and text models}
+\renewcommand{\reportTitle}{MultiMeditron: A robust and scalable framework for muldimodal models}
 % Short title - appears in PDF bookmarks
-\renewcommand{\reportShortTitle}{Robust and Scalable framework for GenAI}
+\renewcommand{\reportShortTitle}{MultiMeditron}
 
 % Optional metadata overrides (uncomment to customize)
 % \renewcommand{\reportType}{MSc Semester Project Report}
@@ -123,7 +197,11 @@
 
 % Front matter
 \input{sections/00_abstract}
+
 \cleardoublepage
+
+\tableofcontents
+\clearpage
 
 % Main content
 \input{sections/01_introduction}
@@ -146,6 +224,7 @@
 \input{sections/backmatter}
 
 % Bibliography
+\clearpage
 \printbibliography
 \clearpage
 
